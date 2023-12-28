@@ -186,6 +186,25 @@
 			"$id": "#/properties/RequireOtherBlock",
 			"type": "boolean",
 			"description": "Require SELECT blocks to have an OTHER block."
+		},
+		"RenameStuff": {
+			"$id": "#/properties/RenameStuff",
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"from": {
+						"type": "string",
+						"description": "The stuff to rename"
+					},
+					"to": {
+						"type": "string",
+						"description": "The new stuff to use"
+					}
+				},
+				"additionalProperties": false
+			},
+			"description": "Rename words."
 		}
 	},
 	"additionalProperties": true
