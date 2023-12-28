@@ -328,6 +328,20 @@ export function getActions(document: TextDocument, errors: IssueRange[]) {
 				}
 				break;
 
+			case `RenameStuff`:
+				if (error.newValue) {
+					action = CodeAction.create(`Rename stuff to '${error.newValue}'`, CodeActionKind.QuickFix);
+					action.edit = {
+						changes: {
+							[document.uri]: [
+								TextEdit.replace(errorRange, error.newValue)
+							]
+						},
+					}
+					actions.push(action);
+				}
+				break;
+		
 			case `RequiresProcedureDescription`:
 				action = CodeAction.create(`Add title and description`, CodeActionKind.QuickFix);
 				action.edit = {

@@ -56,6 +56,7 @@ export interface Rules {
   IncludeMustBeRelative?: boolean;
   SQLHostVarCheck?: boolean;
   RequireOtherBlock?: boolean;
+  RenameStuff?: {from: string, to: string}[];
 
   /** Not for user definition */
   InvalidDeclareNumber?: void;

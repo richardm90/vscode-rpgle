@@ -41,7 +41,8 @@ const errorText = {
   'IncludeMustBeRelative': `Path not valid. It must be relative to the project.`,
   'SQLHostVarCheck': `Also defined in scope. Should likely be host variable.`,
   'RequireOtherBlock': `OTHER block missing from SELECT block.`,
-  'SQLRunner': `Execute this statement through Db2 for i`
+  'SQLRunner': `Execute this statement through Db2 for i`,
+  'RenameStuff': `Stuff needs to be renamed.`,
 };
 
 const skipRules = {
@@ -844,6 +845,24 @@ export default class Linter {
                               offset: { position: part.range.start, end: part.range.end },
                               type: `IncorrectVariableCase`,
                               newValue: definedName
+                            });
+                          }
+                        }
+                      }
+                    }
+
+                    if (rules.RenameStuff) {
+                      // Check whether the reference needs to be renamed
+                      if ((isEmbeddedSQL === false || (isEmbeddedSQL && statement[i - 1] && statement[i - 1].type === `seperator`))) {
+                        const possibleKeyword = (isDeclare || inPrototype || inStruct.length > 0) && i >= 0 && statement[i + 1] && statement[i + 1].type === `openbracket`;
+
+                        if (!possibleKeyword && !isDirective) {
+                          const renameRule = rules.RenameStuff.find(rule => part.value === rule.from);
+                          if (renameRule) {
+                            errors.push({
+                              offset: { position: part.range.start, end: part.range.end },
+                              type: `RenameStuff`,
+                              newValue: renameRule.to
                             });
                           }
                         }
