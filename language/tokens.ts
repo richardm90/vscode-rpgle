@@ -35,7 +35,7 @@ const commonMatchers: Matcher[] = [
       { type: `divide` },
       {
         type: `word`,
-        match: (word) => [`TITLE`, `EJECT`, `SPACE`, `COPY`, `INCLUDE`, `SET`, `RESTORE`, `OVERLOAD`, `DEFINE`, `UNDEFINED`, `IF`, `ELSE`, `ELSEIF`, `ENDIF`, `EOF`, `CHARCOUNT`].includes(word.toUpperCase())
+        match: (word) => [`TITLE`, `EJECT`, `SPACE`, `COPY`, `INCLUDE`, `SET`, `RESTORE`, `OVERLOAD`, `DEFINE`, `UNDEFINE`, `IF`, `ELSE`, `ELSEIF`, `ENDIF`, `EOF`, `CHARCOUNT`].includes(word.toUpperCase())
       },
     ],
     becomes: {
@@ -142,6 +142,17 @@ const commonMatchers: Matcher[] = [
       { type: `word`, match: (word) => word.toUpperCase() === `FOR` },
       { type: `minus` },
       { type: `word`, match: (word) => word.toUpperCase() === `EACH` },
+    ],
+    becomes: {
+      type: `word`
+    }
+  },
+  {
+    name: `SND-MSG`,
+    match: [
+      { type: `word`, match: (word) => word.toUpperCase() === `SND` },
+      { type: `minus` },
+      { type: `word`, match: (word) => word.toUpperCase() === `MSG` },
     ],
     becomes: {
       type: `word`

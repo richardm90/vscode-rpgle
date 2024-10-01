@@ -126,6 +126,7 @@ export default class Parser {
 	 */
   static getIncludeFromDirective(line) {
     if (line.includes(`*`)) return; // Likely comment
+    if (line.includes(`//`)) return; // Likely comment
 
     const upperLine = line.toUpperCase();
     let comment = -1;
@@ -276,9 +277,6 @@ export default class Parser {
           }
 
           if ([`EXTNAME`].includes(tag)) {
-            if (!ds.keywords.includes(`QUALIFIED`))
-              ds.keywords.push(`QUALIFIED`);
-
             // Fetch from external definitions
             const recordFormats = await this.fetchTable(keywordValue, ds.keywords.length.toString(), ds.keywords.includes(`ALIAS`));
 
@@ -298,15 +296,26 @@ export default class Parser {
             }
 
           } else {
+            // We need to add qualified as it is qualified by default.
+            if (!ds.keywords.includes(`QUALIFIED`))
+              ds.keywords.push(`QUALIFIED`);
+
             // Fetch from local definitions
             for (let i = scopes.length - 1; i >= 0; i--) {
               const valuePointer = scopes[i].structs.find(struct => struct.name.toUpperCase() === keywordValue);
               if (valuePointer) {
-                ds.subItems = valuePointer.subItems;
-    
-                // We need to add qualified as it is qualified by default.
-                if (!ds.keywords.includes(`QUALIFIED`))
-                  ds.keywords.push(`QUALIFIED`);
+                // Only use same subItems if local definition is from same path
+                if (ds.position.path === valuePointer.position.path) {
+                  ds.subItems = valuePointer.subItems;
+                } else {
+                  // Clone subitems for correct line assignment
+                  valuePointer.subItems.forEach((item) => {
+                    const newItem = item.clone();
+                    newItem.position.line = ds.position.line;
+                    ds.subItems.push(newItem);
+                  });
+                }
+
                 return;
               }
             }
@@ -747,10 +756,12 @@ export default class Parser {
                 end: statementStartingLine
               };
 
+              currentItem.scope = new Cache();
+
               scope.procedures.push(currentItem);
               resetDefinition = true;
 
-              scopes.push(new Cache());
+              scopes.push(currentItem.scope);
             }
             break;
 
@@ -797,7 +808,7 @@ export default class Parser {
               currentItem = scopes[0].procedures.find(proc => proc.name === currentProcName);
 
               if (currentItem && currentItem.type === `procedure`) {
-                currentItem.scope = scopes.pop();
+                scopes.pop();
                 currentItem.range.end = statementStartingLine;
                 resetDefinition = true;
               }
@@ -843,6 +854,7 @@ export default class Parser {
               // select * into :x from xx.xx
               // call xx.xx()
               const preFileWords = [`INTO`, `FROM`, `UPDATE`, `CALL`, `JOIN`];
+              const ignoredWords = [`FINAL`, `SET`];
 
               const cleanupObjectRef = (content = ``) => {
                 const result = {
@@ -862,34 +874,60 @@ export default class Parser {
                   result.name = result.name.substring(0, openBracket);
                 }
 
+                // End bracket for sub-statements
+                if (result.name.endsWith(`)`) || result.name.endsWith(`,`)) {
+                  result.name = result.name.substring(0, result.name.length - 1);
+                }
+
                 return result;
               }
 
-              parts.forEach((part, index) => {
-                if (
-                  preFileWords.includes(part) &&  // If this is true, usually means next word is the object
-                  (part === `INTO` ? parts[index-1] === `INSERT` : true) // INTO is special, as it can be used in both SELECT and INSERT
-                ) {
-                  if (index >= 0 && (index+1) < parts.length) {
-                    const possibleFileName = partsLower[index+1];
-                    const qualifiedObjectPath = cleanupObjectRef(possibleFileName);
-  
-                    const currentSqlItem = new Declaration(`file`);
-                    currentSqlItem.name = qualifiedObjectPath.name;
-                    currentSqlItem.keywords = [];
-                    currentSqlItem.description = qualifiedObjectPath.schema || ``;
-    
-                    currentSqlItem.position = {
-                      path: file,
-                      line: statementStartingLine
-                    };
-    
-                    scope.sqlReferences.push(currentSqlItem);
+              let isContinued = false;
+
+              /** @type {string[]} */
+              let ignoreCtes = [];
+
+              if (parts.includes(`WITH`)) {
+                for (let index = 4; index < parts.length; index++) {
+                  if (parts[index].startsWith(`AS`) && (parts[index].endsWith(`(`) || parts[index+1] === `(`)) {
+                    ignoreCtes.push(parts[index-1].toUpperCase());
                   }
                 }
-                
-                resetDefinition = true;
-              });
+              }
+
+              for (let index = 0; index < parts.length; index++) {
+                const part = parts[index];
+                let inBlock = preFileWords.includes(part);
+
+                if (
+                  (inBlock || isContinued) &&  // If this is true, usually means next word is the object
+                  (part === `INTO` ? parts[index-1] === `INSERT` : true) // INTO is special, as it can be used in both SELECT and INSERT
+                ) {
+                  if (index >= 0 && (index+1) < parts.length && !ignoredWords.includes(parts[index+1])) {
+                    const possibleFileName = partsLower[index+1];
+                    isContinued = (possibleFileName.endsWith(`,`) || (parts[index+2] === `,`));
+
+                    const qualifiedObjectPath = cleanupObjectRef(possibleFileName);
+
+                    if (qualifiedObjectPath.name && !qualifiedObjectPath.name.startsWith(`:`) && !ignoreCtes.includes(qualifiedObjectPath.name.toUpperCase())) {
+                      const currentSqlItem = new Declaration(`file`);
+                      currentSqlItem.name = qualifiedObjectPath.name;
+
+                      if (currentSqlItem.name)
+
+                      currentSqlItem.keywords = [];
+                      currentSqlItem.description = qualifiedObjectPath.schema || ``;
+      
+                      currentSqlItem.position = {
+                        path: file,
+                        line: statementStartingLine
+                      };
+      
+                      scope.sqlReferences.push(currentSqlItem);
+                    }
+                  }
+                }
+              };
             }
             break;
 
@@ -1149,10 +1187,12 @@ export default class Parser {
                     end: currentItem.position.line
                   };
 
+                  currentItem.scope = new Cache();
+
                   scope.procedures.push(currentItem);
                   resetDefinition = true;
 
-                  scopes.push(new Cache());
+                  scopes.push(currentItem.scope);
                 }
               } else {
                 if (scopes.length > 1) {
@@ -1160,7 +1200,7 @@ export default class Parser {
                   currentItem = scopes[0].procedures.find(proc => proc.name === currentProcName);
 
                   if (currentItem && currentItem.type === `procedure`) {
-                    currentItem.scope = scopes.pop();
+                    scopes.pop();
                     currentItem.range.end = lineNumber;
                     resetDefinition = true;
                   }

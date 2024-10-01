@@ -31,7 +31,8 @@ export default async function completionItemProvider(handler: CompletionParams):
 			// If they're typing inside of a procedure, let's get the stuff from there too
 			const currentProcedure = doc.procedures.find((proc, index) => 
 				lineNumber >= proc.range.start && 
-				(lineNumber <= proc.range.end+1 || index === doc.procedures.length-1)
+				(lineNumber <= proc.range.end+1 || index === doc.procedures.length-1) &&
+				currentPath === proc.position.path
 			);
 
 			const currentLine = document.getText(Range.create(
@@ -47,7 +48,7 @@ export default async function completionItemProvider(handler: CompletionParams):
 				let preWord = getWordRangeAtPosition(document, currentPosition);
 
 				// Uh oh! Maybe we found dim struct?
-				if (preWord) {
+				if (preWord && preWord.includes(`)`)) {
 					const startBracket = currentLine.lastIndexOf(`(`, currentPosition.character);
 
 					if (startBracket > -1) {

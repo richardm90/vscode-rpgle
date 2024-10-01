@@ -26,7 +26,7 @@ import { getPrettyType } from '../../../language/models/fixed';
 import * as Project from './providers/project';
 import workspaceSymbolProvider from './providers/project/workspaceSymbol';
 import implementationProvider from './providers/implementation';
-import { dspffdToRecordFormats, parseMemberUri } from './data';
+import { dspffdToRecordFormats, isInMerlin, parseMemberUri } from './data';
 import path = require('path');
 import { existsSync } from 'fs';
 import { renamePrepareProvider, renameRequestProvider } from './providers/rename';
@@ -35,9 +35,11 @@ let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
 let hasDiagnosticRelatedInformationCapability = false;
 
-const languageToolsEnabled = process.env.LANGUAGE_TOOLS_ENABLED;
-const linterEnabled = process.env.LINTER_ENABLED;
-const formatterEnabled = process.env.FORMATTER_ENABLED;
+const outsideMerlin = !isInMerlin();
+
+const languageToolsEnabled = outsideMerlin;
+const linterEnabled = true;
+const formatterEnabled = outsideMerlin;
 
 let projectEnabled = false;
 
@@ -68,7 +70,7 @@ connection.onInitialize((params: InitializeParams) => {
 		result.capabilities.documentSymbolProvider = true;
 		result.capabilities.definitionProvider = true;
 		result.capabilities.completionProvider = {
-			triggerCharacters: [` `, `.`, `:`]
+			triggerCharacters: [`.`, `:`]
 		};
 		result.capabilities.hoverProvider = true;
 		result.capabilities.referencesProvider = true;

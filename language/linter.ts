@@ -26,7 +26,7 @@ const errorText = {
   'StringLiteralDupe': `Same string literal used more than once. Consider using a constant instead.`,
   'RequireBlankSpecial': `\`*BLANK\` should be used over empty string literals.`,
   'CopybookDirective': `Directive does not match requirement.`,
-  'UppercaseDirectives': `Directives must be in uppercase.`,
+  'DirectiveCase': `Does not match required case.`,
   'NoSQLJoins': `SQL joins are not allowed. Consider creating a view instead.`,
   'NoGlobalsInProcedures': `Global variables should not be referenced in procedures.`,
   'NoCTDATA': `\`CTDATA\` is not allowed.`,
@@ -108,7 +108,7 @@ export default class Linter {
 
     const selectBlocks: SelectBlock[] = [];
 
-    const stringLiterals: { value: string, definition?: string, list: { offset: Offset }[] }[] = [];
+    const stringLiterals: { value: string, list: { line: number, offset: Offset }[] }[] = [];
 
     let directiveScope = 0;
     let currentRule = skipRules.none;
@@ -161,7 +161,7 @@ export default class Linter {
         // Linter checking
         if (ruleCount > 0 && ![skipRules.single, skipRules.singleRules].includes(currentRule)) {
 
-          const currentProcedure = globalScope.procedures.find(proc => lineNumber >= proc.range.start && lineNumber <= proc.range.end);
+          const currentProcedure = globalScope.procedures.find(proc => proc.position.path === data.uri && lineNumber >= proc.range.start && lineNumber <= proc.range.end);
           const currentScope = globalScope.merge(inProcedure && currentProcedure ? currentProcedure.scope : undefined);
 
           // Only fetch the names if we have a rule that requires it. It might be slow.
@@ -204,15 +204,6 @@ export default class Linter {
 
               case `directive`:
                 value = statement[0].value;
-                if (rules.UppercaseDirectives) {
-                  if (value !== value.toUpperCase()) {
-                    errors.push({
-                      offset: { position: statement[0].range.start, end: statement[0].range.end },
-                      type: `UppercaseDirectives`,
-                      newValue: value.toUpperCase()
-                    });
-                  }
-                }
 
                 if (rules.CopybookDirective || rules.IncludeMustBeRelative) {
                   if ([`/COPY`, `/INCLUDE`].includes(value.toUpperCase())) {
@@ -292,8 +283,13 @@ export default class Linter {
                     }
 
                     if (rules.CopybookDirective) {
-                      const correctDirective = `/${rules.CopybookDirective.toUpperCase()}`;
-                      if (value.toUpperCase() !== correctDirective) {
+                      let correctDirective = `/${rules.CopybookDirective.toUpperCase()}`;
+                      let correctValue = value.toUpperCase();
+                      if (rules.DirectiveCase === `lower`) {
+                        correctDirective = correctDirective.toLowerCase();
+                        correctValue = value.toLowerCase();
+                      }
+                      if (correctValue !== correctDirective) {
                         errors.push({
                           offset: { position: statement[0].range.start, end: statement[0].range.end },
                           type: `CopybookDirective`,
@@ -301,6 +297,26 @@ export default class Linter {
                         });
                       }
                     }
+                  }
+                }
+
+                if (rules.DirectiveCase === `lower`) {
+                  if (value !== value.toLowerCase()) {
+                    errors.push({
+                      offset: { position: statement[0].range.start, end: statement[0].range.end },
+                      type: `DirectiveCase`,
+                      newValue: value.toLowerCase()
+                    });
+                  }
+                }
+
+                if (rules.DirectiveCase === `upper`) {
+                  if (value !== value.toUpperCase()) {
+                    errors.push({
+                      offset: { position: statement[0].range.start, end: statement[0].range.end },
+                      type: `DirectiveCase`,
+                      newValue: value.toUpperCase()
+                    });
                   }
                 }
                 break;
@@ -361,8 +377,7 @@ export default class Linter {
                       if (rules.NoGlobalSubroutines) {
                         errors.push({
                           offset: { position: statement[0].range.start, end: statement[0].range.end },
-                          type: `NoGlobalSubroutines`,
-                          newValue: `Dcl-Proc`
+                          type: `NoGlobalSubroutines`
                         });
                       }
                     }
@@ -398,23 +413,6 @@ export default class Linter {
                           type: `UppercaseConstants`,
                           newValue: value.toUpperCase()
                         });
-                      }
-                    }
-
-                    if (rules.StringLiteralDupe) {
-                      if (statement[2].type === `string`) {
-                        let foundBefore = stringLiterals.find(literal => literal.value === statement[2].value);
-
-                        // If it does not exist on our list, we can add it
-                        if (!foundBefore) {
-                          foundBefore = {
-                            definition: value,
-                            value: statement[2].value,
-                            list: []
-                          };
-
-                          stringLiterals.push(foundBefore);
-                        }
                       }
                     }
                     break;
@@ -558,8 +556,7 @@ export default class Linter {
                       if (rules.NoGlobalSubroutines) {
                         errors.push({
                           offset: { position: statement[0].range.start, end: statement[0].range.end },
-                          type: `NoGlobalSubroutines`,
-                          newValue: `End-Proc`
+                          type: `NoGlobalSubroutines`
                         });
                       }
                     }
@@ -635,8 +632,7 @@ export default class Linter {
                     if (rules.NoGlobalSubroutines && !inProcedure) {
                       errors.push({
                         type: `NoGlobalSubroutines`,
-                        offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end },
-                        newValue: `return`
+                        offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
                       });
                     }
                     break;
@@ -646,8 +642,7 @@ export default class Linter {
                         if (globalScope.subroutines.find(sub => sub.name.toUpperCase() === statement[1].value.toUpperCase())) {
                           errors.push({
                             type: `NoGlobalSubroutines`,
-                            offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end },
-                            newValue: `${statement[1].value}()`
+                            offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
                           });
                         }
                       }
@@ -711,7 +706,7 @@ export default class Linter {
 
                     if (rules.SQLRunner) {
                       // For running SQL statements
-                      const validStatements = [`declare`, `with`, `select`].includes(statement[2].value.toLowerCase());
+                      const validStatements = [`declare`, `with`, `select`, `merge`, `update`].includes(statement.find((t, i) => i >= 2 && t.type !== `newline`)?.value.toLowerCase());
                       if (validStatements) {
                         errors.push({
                           type: `SQLRunner`,
@@ -996,6 +991,7 @@ export default class Linter {
 
                       // Then add our new found literal location to the list
                       foundBefore.list.push({
+                        line: lineNumber,
                         offset: { position: part.range.start, end: part.range.end }
                       });
                     }
@@ -1087,10 +1083,11 @@ export default class Linter {
       stringLiterals.forEach(literal => {
         if (literal.list.length >= literalMinimum) {
           literal.list.forEach(location => {
+            const possibleConst = globalScope.findConstByValue(location.line, literal.value);
             errors.push({
-              ...location,
+              offset: location.offset,
               type: `StringLiteralDupe`,
-              newValue: literal.definition
+              newValue: possibleConst ? possibleConst.name : undefined
             });
           });
         }

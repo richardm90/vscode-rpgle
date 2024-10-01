@@ -11,7 +11,7 @@ jobs:
       # Setup prereqs
       - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '20'
       - uses: actions/checkout@v3
       - run: npm install
       - run: npm install -g vsce
@@ -26,11 +26,3 @@ jobs:
       - name: Publish to Open VSX
         run: npx ovsx publish -p ${{ secrets.OPENVSX_TOKEN }}
         
-      # Create linter only build
-      - name: Create linter only build (Merlin)
-        run: npm run package:linter
-      - name: Upload build
-        uses: actions/upload-artifact@v2
-        with:
-          name: vscode-rpgle-linter-only
-          path: ./*.vsix
