@@ -46,16 +46,18 @@ export function dspffdToRecordFormats(data: any, aliases = false): Declaration[]
 
 		const currentSubfield = new Declaration(`subitem`);
 		currentSubfield.name = name;
-		const keywords = [];
+		let keywords: {[key: string]: string|true} = {};
 
-		if (row.WHVARL === `Y`) keywords.push(`VARYING`);
+		if (row.WHVARL === `Y`) keywords[`VARYING`] = true;
 
-		currentSubfield.keywords = [getPrettyType({
+		currentSubfield.keyword = getPrettyType({
 			type,
 			len: digits === 0 ? strLength : digits,
 			decimals: decimals,
 			keywords,
-		})];
+			field: ``,
+			pos: ``
+		});
 		currentSubfield.description = text.trim();
 
 		recordFormat.subItems.push(currentSubfield);

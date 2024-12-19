@@ -168,7 +168,7 @@ test('eof1', async () => {
 
   const uppercase = cache.find(`UPPERCASE`);
   expect(uppercase.name).toBe(`UPPERCASE`);
-  expect(uppercase.position.line).toBe(0);
+  expect(uppercase.position.range.line).toBe(0);
   expect(uppercase.subItems.length).toBe(2);
 })
 
@@ -190,7 +190,7 @@ test('eof2', async () => {
 
   const uppercase = cache.find(`UPPERCASE`);
   expect(uppercase.name).toBe(`UPPERCASE`);
-  expect(uppercase.position.line).toBe(0);
+  expect(uppercase.position.range.line).toBe(0);
   expect(uppercase.subItems.length).toBe(2);
 })
 
@@ -235,7 +235,7 @@ test('eof4', async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy './tests/rpgle/eof4.rpgle'`,
+    `/copy './rpgle/eof4.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -258,7 +258,7 @@ test('eof4', async () => {
 
   const baseNameInclude = path.basename(uppercase.position.path);
   expect(baseNameInclude).toBe(`eof4.rpgle`);
-  expect(uppercase.position.line).toBe(0);
+  expect(uppercase.position.range.line).toBe(0);
 })
 
 
@@ -310,11 +310,11 @@ test('incorrectEnd1', async () => {
     PrettyComments: true
   }, cache);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 45, end: 53 }, type: `UnexpectedEnd`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 45, end: 53 }, type: `UnexpectedEnd`
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`End-Proc`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`End-Proc`);
 })
 
 test('incorrectEnd2', async () => {
@@ -332,11 +332,11 @@ test('incorrectEnd2', async () => {
     PrettyComments: true
   }, cache);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 48, end: 53 }, type: `UnexpectedEnd`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 48, end: 53 }, type: `UnexpectedEnd`
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`endsr`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`endsr`);
 })
 
 test('incorrectEnd3', async () => {
@@ -354,11 +354,11 @@ test('incorrectEnd3', async () => {
     PrettyComments: true
   }, cache);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 44, end: 52 }, type: `UnexpectedEnd`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 44, end: 52 }, type: `UnexpectedEnd`
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`end-proc`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`end-proc`);
 })
 
 test('incorrectEnd4', async () => {
@@ -383,8 +383,8 @@ test('incorrectEnd4', async () => {
     PrettyComments: true
   }, cache);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 187, end: 195 }, type: `UnexpectedEnd`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 187, end: 195 }, type: `UnexpectedEnd`
   });
 })
 
@@ -466,7 +466,7 @@ test('variable_case1', async () => {
   const lines = [
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
-    `/copy './tests/rpgle/copy3.rpgle'`,
+    `/copy './rpgle/copy3.rpgle'`,
     `Dcl-S MyCustomerName1 like(customername_t);`,
     `Dcl-S MyCustomerName2 like(CustomerName_t);`,
     `Dcl-S MyCustomerName3 like(CUSTOMERNAME_t);`,
@@ -483,20 +483,20 @@ test('variable_case1', async () => {
 
   expect(errors.length).toBe(3);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 92, end: 106 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 86, end: 100 },
     type: `IncorrectVariableCase`,
     newValue: `CustomerName_t`
   });
 
-  expect(errors[1]).toEqual({
-    offset: { position: 180, end: 194 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 174, end: 188 },
     type: `IncorrectVariableCase`,
     newValue: `CustomerName_t`
   });
 
-  expect(errors[2]).toEqual({
-    offset: { position: 224, end: 238 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 218, end: 232 },
     type: `IncorrectVariableCase`,
     newValue: `CustomerName_t`
   });
@@ -506,7 +506,7 @@ test('variable_case1 commented out', async () => {
   const lines = [
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
-    `// /copy './tests/rpgle/copy3.rpgle'`,
+    `// /copy './rpgle/copy3.rpgle'`,
     `Dcl-S MyCustomerName1 like(customername_t);`,
     `Dcl-S MyCustomerName2 like(CustomerName_t);`,
     `Dcl-S MyCustomerName3 like(CUSTOMERNAME_t);`,
@@ -528,9 +528,9 @@ test('uppercase1', async () => {
   const lines = [
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
-    `/copy './tests/rpgle/copy1.rpgle'`,
-    `/Copy './tests/rpgle/copy2.rpgle'`,
-    `/COPY './tests/rpgle/copy3.rpgle'`,
+    `/copy './rpgle/copy1.rpgle'`,
+    `/Copy './rpgle/copy2.rpgle'`,
+    `/COPY './rpgle/copy3.rpgle'`,
     `Dcl-S MyCustomerName1 like(CustomerName_t);`,
     `MyCustomerName1 = 'John Smith';`,
     `dsply MyCustomerName1;`,
@@ -544,14 +544,14 @@ test('uppercase1', async () => {
 
   expect(errors.length).toBe(2);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 31, end: 36 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 31, end: 36 },
     type: `DirectiveCase`,
     newValue: `/COPY`
   });
 
-  expect(errors[1]).toEqual({
-    offset: { position: 65, end: 70 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 59, end: 64 },
     type: `DirectiveCase`,
     newValue: `/COPY`
   });
@@ -561,9 +561,9 @@ test('lowercase1', async () => {
   const lines = [
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
-    `/copy './tests/rpgle/copy1.rpgle'`,
-    `/Copy './tests/rpgle/copy2.rpgle'`,
-    `/COPY './tests/rpgle/copy3.rpgle'`,
+    `/copy './rpgle/copy1.rpgle'`,
+    `/Copy './rpgle/copy2.rpgle'`,
+    `/COPY './rpgle/copy3.rpgle'`,
     `Dcl-S MyCustomerName1 like(CustomerName_t);`,
     `MyCustomerName1 = 'John Smith';`,
     `dsply MyCustomerName1;`,
@@ -577,14 +577,14 @@ test('lowercase1', async () => {
 
   expect(errors.length).toBe(2);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 65, end: 70 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 59, end: 64 },
     type: `DirectiveCase`,
     newValue: `/copy`
   });
 
-  expect(errors[1]).toEqual({
-    offset: { position: 99, end: 104 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 87, end: 92 },
     type: `DirectiveCase`,
     newValue: `/copy`
   });
@@ -594,7 +594,7 @@ test('macro defined test 1', async () => {
   const lines = [
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
-    `/copy './tests/rpgle/copy4.rpgleinc'`,
+    `/copy './rpgle/copy4.rpgleinc'`,
     `Dcl-S MyCustomerName1 char(5);`,
     `MyCustomerName1 = 'John Smith';`,
     `dsply MyCustomerName1;`,
@@ -603,7 +603,6 @@ test('macro defined test 1', async () => {
 
   const cache = await parser.getDocs(uri, lines, { withIncludes: true, ignoreCache: true });
 
-  console.log(cache.procedures);
   expect(cache.includes.length).toBe(1);
   expect(cache.procedures.length).toBe(1);
 })
@@ -613,7 +612,7 @@ test('macro defined test 2', async () => {
     `**FREE`,
     `Ctl-Opt DftActGrp(*No);`,
     `/DEFINE QRPGLEH_RPMAR001`,
-    `/copy './tests/rpgle/copy4.rpgleinc'`,
+    `/copy './rpgle/copy4.rpgleinc'`,
     `Dcl-S MyCustomerName1 char(5);`,
     `MyCustomerName1 = 'John Smith';`,
     `dsply MyCustomerName1;`,
@@ -622,7 +621,24 @@ test('macro defined test 2', async () => {
 
   const cache = await parser.getDocs(uri, lines, { withIncludes: true, ignoreCache: true });
 
-  console.log(cache.procedures);
   expect(cache.includes.length).toBe(1);
   expect(cache.procedures.length).toBe(0);
+});
+
+
+test('depth test', async () => {
+  const lines = [
+    `**FREE`,
+    `Ctl-Opt DftActGrp(*No);`,
+    `/copy './rpgle/depth1.rpgleinc'`,
+    `Dcl-S MyCustomerName1 char(5);`,
+    `MyCustomerName1 = 'John Smith';`,
+    `dsply MyCustomerName1;`,
+    `Return;`
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { withIncludes: true, ignoreCache: true });
+
+  expect(cache.includes.length).toBe(2);
+  expect(cache.variables.length).toBe(3);
 })

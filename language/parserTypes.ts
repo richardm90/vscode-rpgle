@@ -1,5 +1,6 @@
 import Declaration from './models/declaration';
 import {Range} from "./models/DataPoints";
+import { IRange } from './types';
 
 export interface Keywords {
   [keyword: string]: string|true;
@@ -22,6 +23,7 @@ export interface CacheProps {
   sqlReferences?: Declaration[];
   indicators?: Declaration[];
   includes?: IncludeStatement[];
+  tags?: Declaration[];
 }
 
 export interface Rules {
@@ -72,18 +74,18 @@ export  interface DefinitionPosition {
   line: number;
 }
 
-export interface Offset {
-  position: number,
-  end: number
+export interface Reference {
+  uri: string;
+  offset: IRange;
 }
 
 export interface IssueRange {
-  offset: Offset;
+  offset: IRange;
   type?: keyof Rules;
   newValue?: string;
 }
 
 export interface SelectBlock {
-  offset: Offset;
+  offset: IRange;
   otherBlockExists: boolean;
 }

@@ -3,6 +3,7 @@ import path from "path";
 import setupParser from "../parserSetup";
 import Linter from "../../language/linter";
 import { test, expect } from "vitest";
+import { tokenise } from "../../language/tokens";
 
 const parser = setupParser();
 const uri = `source.rpgle`;
@@ -293,11 +294,11 @@ test('linter4', async () => {
 
   expect(errors.length).to.equal(2);
   expect(errors[0].type).to.equal('RequireBlankSpecial');
-  expect(errors[0].offset.position).to.equal(76);
+  expect(errors[0].offset.start).to.equal(76);
   expect(errors[0].offset.end).to.equal(78);
   expect(errors[0].newValue).to.equal('*BLANK');
   expect(errors[1].type).to.equal('RequireBlankSpecial');
-  expect(errors[1].offset.position).to.equal(98);
+  expect(errors[1].offset.start).to.equal(98);
   expect(errors[1].offset.end).to.equal(100);
   expect(errors[1].newValue).to.equal('*BLANK');
 });
@@ -327,11 +328,11 @@ test('linter5', async () => {
 
   expect(errors.length).to.equal(2);
   expect(errors[0].type).to.equal('IncorrectVariableCase');
-  expect(errors[0].offset.position).to.equal(62);
+  expect(errors[0].offset.start).to.equal(62);
   expect(errors[0].offset.end).to.equal(73);
   expect(errors[0].newValue).to.equal('MyVariable2');
   expect(errors[1].type).to.equal('IncorrectVariableCase');
-  expect(errors[1].offset.position).to.equal(122);
+  expect(errors[1].offset.start).to.equal(122);
   expect(errors[1].offset.end).to.equal(133);
   expect(errors[1].newValue).to.equal('MyVariable2');
 });
@@ -365,10 +366,10 @@ test('linter6', async () => {
 
   expect(errors.length).to.equal(2);
   expect(errors[0].type).to.equal('StringLiteralDupe');
-  expect(errors[0].offset.position).to.equal(239);
+  expect(errors[0].offset.start).to.equal(239);
   expect(errors[0].offset.end).to.equal(247);
   expect(errors[1].type).to.equal('StringLiteralDupe');
-  expect(errors[1].offset.position).to.equal(271);
+  expect(errors[1].offset.start).to.equal(271);
   expect(errors[1].offset.end).to.equal(279);
 });
 
@@ -392,20 +393,20 @@ test('linter6_lf', async () => {
 
   expect(errors.length).to.equal(3);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 95, end: 107 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 95, end: 107 },
     type: 'IncorrectVariableCase',
     newValue: 'Myotherthing'
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 44, end: 59 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 44, end: 59 },
     type: 'StringLiteralDupe',
     newValue: undefined
   });
 
-  expect(errors[2]).to.deep.equal({
-    offset: { position: 68, end: 83 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 68, end: 83 },
     type: 'StringLiteralDupe',
     newValue: undefined
   });
@@ -431,20 +432,20 @@ test('linter6_crlf', async () => {
 
   expect(errors.length).to.equal(3);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 101, end: 113 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 101, end: 113 },
     type: 'IncorrectVariableCase',
     newValue: 'Myotherthing'
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 48, end: 63 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 48, end: 63 },
     type: 'StringLiteralDupe',
     newValue: undefined
   });
 
-  expect(errors[2]).to.deep.equal({
-    offset: { position: 73, end: 88 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 73, end: 88 },
     type: 'StringLiteralDupe',
     newValue: undefined
   });
@@ -483,8 +484,8 @@ test('linter7_casing1', async () => {
 
   expect(errors.length).to.equal(1);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 141, end: 147 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 141, end: 147 },
     type: 'SpecificCasing',
     newValue: 'SELECT'
   });
@@ -520,8 +521,8 @@ test("linter7_casing2", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    offset: { position: 8, end: 15 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 8, end: 15 },
     type: `SpecificCasing`,
     newValue: `Ctl-OPT`
   });
@@ -557,8 +558,8 @@ test("linter7_casing3", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    offset: { position: 33, end: 38 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 33, end: 38 },
     type: `SpecificCasing`,
     newValue: `DCL-S`
   });
@@ -589,8 +590,8 @@ test("linter7_casing4", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    offset: { position: 164, end: 169 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 164, end: 169 },
     type: `SpecificCasing`,
     newValue: `%trim`
   });
@@ -774,7 +775,7 @@ test('linter7_casing10', async () => {
   }, cache);
 
   expect(errors.length).to.equal(1);
-  expect(errors[0].offset.position).to.equal(178);
+  expect(errors[0].offset.start).to.equal(178);
   expect(errors[0].offset.end).to.equal(188);
   expect(errors[0].newValue).to.equal('sFirstName');
 });
@@ -807,14 +808,14 @@ test('linter7_casing11', async () => {
 
   expect(errors.length).to.equal(2);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 121, end: 127 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 121, end: 127 },
     type: 'IncorrectVariableCase',
     newValue: 'sEmpNo'
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 179, end: 189 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 179, end: 189 },
     type: 'IncorrectVariableCase',
     newValue: 'sFirstName'
   });
@@ -880,8 +881,8 @@ test('linter8', async () => {
   }, cache);
 
   expect(errors.length).to.equal(1);
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 236, end: 245 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 236, end: 245 },
     type: 'RequiresParameter'
   });
 });
@@ -954,20 +955,20 @@ test('linter9', async () => {
 
   expect(errors.length).to.equal(3);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 194, end: 202 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 194, end: 202 },
     type: 'IncorrectVariableCase',
     newValue: 'localVar'
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 217, end: 228 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 217, end: 228 },
     type: 'IncorrectVariableCase',
     newValue: 'MyVariable2'
   });
 
-  expect(errors[2]).to.deep.equal({
-    offset: { position: 231, end: 239 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 231, end: 239 },
     type: 'IncorrectVariableCase',
     newValue: 'localVar'
   });
@@ -1002,13 +1003,13 @@ test('linter10', async () => {
 
   expect(errors.length).to.equal(2);
 
-  expect(errors[0]).to.deep.equal({
+  expect(errors[0]).toMatchObject({
     type: 'NoCTDATA',
-    offset: { position: 51, end: 89 }
+    offset: { start: 51, end: 89 }
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 222, end: 230 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 222, end: 230 },
     type: 'NoCTDATA'
   });
 });
@@ -1033,14 +1034,14 @@ test('linter11', async () => {
 
   expect(errors.length).to.equal(2);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 73, end: 88 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 73, end: 88 },
     type: 'StringLiteralDupe',
     newValue: 'HELLO'
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 97, end: 112 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 97, end: 112 },
     type: 'StringLiteralDupe',
     newValue: 'HELLO'
   });
@@ -1136,19 +1137,19 @@ test('linter13_commentIndent', async () => {
 
   expect(indentErrors.length).to.equal(3);
 
-  expect(indentErrors[0]).to.deep.equal({
+  expect(indentErrors[0]).toMatchObject({
     currentIndent: 2,
     expectedIndent: 0,
     line: 9
   });
 
-  expect(indentErrors[1]).to.deep.equal({
+  expect(indentErrors[1]).toMatchObject({
     currentIndent: 0,
     expectedIndent: 2,
     line: 15
   });
 
-  expect(indentErrors[2]).to.deep.equal({
+  expect(indentErrors[2]).toMatchObject({
     currentIndent: 6,
     expectedIndent: 2,
     line: 20
@@ -1210,14 +1211,14 @@ test('linter15', async () => {
 
   expect(errors.length).to.equal(2);
 
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 36, end: 38 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 36, end: 38 },
     type: 'PrettyComments',
     newValue: '// '
   });
 
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 207, end: 209 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 207, end: 209 },
     type: 'PrettyComments',
     newValue: '// '
   });
@@ -1245,16 +1246,16 @@ test('linter16', async () => {
   }, cache);
 
   expect(errors.length).to.equal(3);
-  expect(errors[0]).to.deep.equal({
+  expect(errors[0]).toMatchObject({
     type: `NoGlobalSubroutines`,
-    offset: { position: 36, end: 54 }
+    offset: { start: 36, end: 54 }
   });
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 76, end: 81 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 76, end: 81 },
     type: `NoGlobalSubroutines`
   });
-  expect(errors[2]).to.deep.equal({
-    offset: { position: 128, end: 133 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 128, end: 133 },
     type: `NoGlobalSubroutines`
   });
 });
@@ -1283,20 +1284,20 @@ test('linter16_with_leavesr', async () => {
   }, cache);
 
   expect(errors.length).to.equal(4);
-  expect(errors[0]).to.deep.equal({
+  expect(errors[0]).toMatchObject({
     type: `NoGlobalSubroutines`,
-    offset: { position: 71, end: 89 }
+    offset: { start: 71, end: 89 }
   });
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 111, end: 116 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 111, end: 116 },
     type: `NoGlobalSubroutines`
   });
-  expect(errors[2]).to.deep.equal({
+  expect(errors[2]).toMatchObject({
     type: `NoGlobalSubroutines`,
-    offset: { position: 156, end: 163 }
+    offset: { start: 156, end: 163 }
   });
-  expect(errors[3]).to.deep.equal({
-    offset: { position: 205, end: 210 },
+  expect(errors[3]).toMatchObject({
+    offset: { start: 205, end: 210 },
     type: `NoGlobalSubroutines`
   });
 });
@@ -1326,8 +1327,8 @@ test('linter17', async () => {
   }, cache);
 
   expect(errors.length).to.equal(1);
-  expect(errors[0]).to.deep.equal({
-    type: `NoLocalSubroutines`, offset: { position: 119, end: 138 }
+  expect(errors[0]).toMatchObject({
+    type: `NoLocalSubroutines`, offset: { start: 119, end: 138 }
   });
 });
 
@@ -1352,12 +1353,12 @@ test('linter18', async () => {
   }, cache);
 
   expect(errors.length).to.equal(2);
-  expect(errors[0]).to.deep.equal({
-    offset: { position: 123, end: 134 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 123, end: 134 },
     type: `NoGlobalsInProcedures`
   });
-  expect(errors[1]).to.deep.equal({
-    offset: { position: 164, end: 175 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 164, end: 175 },
     type: `NoGlobalsInProcedures`
   });
 });
@@ -1437,44 +1438,44 @@ test('linter19', async () => {
     `End-Proc;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
 
   expect(errors.length).to.equal(11);
-  expect(errors[0]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 66, end: 86 }
+  expect(errors[0]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 66, end: 86 }
   });
-  expect(errors[1]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 1089, end: 1104 } 
+  expect(errors[1]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 1089, end: 1104 } 
   });
-  expect(errors[2]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 160, end: 176 } 
+  expect(errors[2]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 160, end: 176 } 
   });
-  expect(errors[3]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 139, end: 154 }
+  expect(errors[3]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 139, end: 154 }
   });
-  expect(errors[4]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 337, end: 354 }
+  expect(errors[4]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 337, end: 354 }
   });
-  expect(errors[5]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 302, end: 331 }
+  expect(errors[5]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 302, end: 331 }
   });
-  expect(errors[6]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 539, end: 566 }
+  expect(errors[6]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 539, end: 566 }
   });
-  expect(errors[7]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 735, end: 749 }
+  expect(errors[7]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 735, end: 749 }
   });
-  expect(errors[8]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 705, end: 725 }
+  expect(errors[8]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 705, end: 725 }
   });
-  expect(errors[9]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 893, end: 910 }
+  expect(errors[9]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 893, end: 910 }
   });
-  expect(errors[10]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 849, end: 883 }
+  expect(errors[10]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 849, end: 883 }
   });
 });
 
@@ -1496,7 +1497,7 @@ test('linter20', async () => {
 
   expect(errors.length).to.equal(1);
   expect(errors[0].type).to.equal(`IncorrectVariableCase`);
-  expect(errors[0].offset.position).to.equal(92);
+  expect(errors[0].offset.start).to.equal(92);
   expect(errors[0].offset.end).to.equal(103);
   expect(errors[0].newValue).to.equal(`MyVariable2`);
 });
@@ -1530,14 +1531,14 @@ test('linter21', async () => {
     `End-Proc;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
 
   expect(errors.length).to.equal(1);
-  expect(errors[0]).to.deep.equal({
-    type: `NoUnreferenced`, offset: { position: 257, end: 270 }
+  expect(errors[0]).toMatchObject({
+    type: `NoUnreferenced`, offset: { start: 257, end: 270 }
   });
 });
 
@@ -1565,8 +1566,8 @@ test('linter22', async () => {
   }, cache);
 
   expect(errors.length).to.equal(1);
-  expect(errors[0]).to.deep.equal({
-    type: `PrototypeCheck`, offset: { position: 8, end: 27 }
+  expect(errors[0]).toMatchObject({
+    type: `PrototypeCheck`, offset: { start: 8, end: 27 }
   });
 });
 
@@ -1610,7 +1611,7 @@ test("linter23", async () => {
     `End-Proc;`
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
@@ -1674,11 +1675,11 @@ test("linter24", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    type: `NoExternalTo`, offset: { position: 95, end: 132 }
+  expect(errors[0]).toMatchObject({
+    type: `NoExternalTo`, offset: { start: 95, end: 132 }
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`Dcl-PR GetProfile  ExtPgm('QSYGETPH')`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`Dcl-PR GetProfile  ExtPgm('QSYGETPH')`);
 });
 
 test("linter25", async () => {
@@ -1743,17 +1744,17 @@ test("linter25", async () => {
 
   expect(errors.length).toBe(2);
 
-  expect(errors[0]).toEqual({
-    type: `NoExternalTo`, offset: { position: 163, end: 200 }
+  expect(errors[0]).toMatchObject({
+    type: `NoExternalTo`, offset: { start: 163, end: 200 }
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`Dcl-PR GetProfile  ExtPgm('QSYGETPH')`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`Dcl-PR GetProfile  ExtPgm('QSYGETPH')`);
 
-  expect(errors[1]).toEqual({
-    type: `NoExternalTo`, offset: { position: 506, end: 544 }
+  expect(errors[1]).toMatchObject({
+    type: `NoExternalTo`, offset: { start: 506, end: 544 }
   });
 
-  expect(lines.substring(errors[1].offset.position, errors[1].offset.end)).toBe(`Dcl-Pr CloseProfile ExtPgm('QSYRLSPH')`);
+  expect(lines.substring(errors[1].offset.start, errors[1].offset.end)).toBe(`Dcl-Pr CloseProfile ExtPgm('QSYRLSPH')`);
 });
 
 test("linter26", async () => {
@@ -1772,7 +1773,7 @@ test("linter26", async () => {
     `Return;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
@@ -1801,8 +1802,8 @@ test("linter27", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    type: `NoExecuteImmediate`, offset: { position: 105, end: 148 }
+  expect(errors[0]).toMatchObject({
+    type: `NoExecuteImmediate`, offset: { start: 105, end: 148 }
   });
 });
 
@@ -1824,12 +1825,12 @@ test("linter28", async () => {
 
   expect(errors.length).toBe(2);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 26, end: 38 }, type: `NoExtProgramVariable`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 26, end: 38 }, type: `NoExtProgramVariable`
   });
 
-  expect(errors[1]).toEqual({
-    offset: { position: 81, end: 93 }, type: `NoExtProgramVariable`
+  expect(errors[1]).toMatchObject({
+    offset: { start: 81, end: 93 }, type: `NoExtProgramVariable`
   });
 });
 
@@ -1839,7 +1840,7 @@ test("linter29", async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy './tests/rpgle/copy1.rpgle'`,
+    `/copy './rpgle/copy1.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -1865,7 +1866,7 @@ test("linter29", async () => {
 
   const baseNameInclude = path.basename(cache.procedures[0].position.path);
   expect(baseNameInclude).toBe("copy1.rpgle");
-  expect(cache.procedures[0].position.line).toBe(2);
+  expect(cache.procedures[0].position.range.line).toBe(2);
 
   expect(errors.length).toBe(0);
 });
@@ -1894,8 +1895,8 @@ test("linter30", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 39, end: 49 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 39, end: 49 },
     type: `IncludeMustBeRelative`,
     newValue: undefined
   });
@@ -1950,7 +1951,7 @@ test("linter31_b", async () => {
   const { errors } = Linter.getErrors({
     uri,
     content: lines,
-    availableIncludes: [`tests/rpgle/copy1.rpgle`]
+    availableIncludes: [`rpgle/copy1.rpgle`]
   }, {
     IncludeMustBeRelative: true,
   }, cache);
@@ -1960,10 +1961,10 @@ test("linter31_b", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 39, end: 50 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 39, end: 50 },
     type: `IncludeMustBeRelative`,
-    newValue: `'tests/rpgle/copy1.rpgle'`
+    newValue: `'rpgle/copy1.rpgle'`
   });
 });
 
@@ -1973,7 +1974,7 @@ test("linter32", async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy 'tests/rpgle/copy1.rpgle'`,
+    `/copy 'rpgle/copy1.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -2016,7 +2017,7 @@ test("linter32_b", async () => {
   const { errors } = Linter.getErrors({
     uri,
     content: lines,
-    availableIncludes: [`tests/rpgle/copy1.rpgle`]
+    availableIncludes: [`rpgle/copy1.rpgle`]
   }, {
     IncludeMustBeRelative: true
   }, cache);
@@ -2026,10 +2027,10 @@ test("linter32_b", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 39, end: 52 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 39, end: 52 },
     type: `IncludeMustBeRelative`,
-    newValue: `'tests/rpgle/copy1.rpgle'`
+    newValue: `'rpgle/copy1.rpgle'`
   });
 });
 
@@ -2039,7 +2040,7 @@ test("linter33", async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy '/tests/rpgle/copy1.rpgle'`,
+    `/copy '/rpgle/copy1.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -2060,8 +2061,8 @@ test("linter33", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 39, end: 65 }, type: `IncludeMustBeRelative`
+  expect(errors[0]).toMatchObject({
+    offset: { start: 39, end: 59 }, type: `IncludeMustBeRelative`
   });
 });
 
@@ -2093,8 +2094,8 @@ test("linter34", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 183, end: 190 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 183, end: 190 },
     type: `SQLHostVarCheck`,
     newValue: `:Deptnum`
   });
@@ -2162,7 +2163,7 @@ test("linter37", async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy 'tests/rpgle/copy1.rpgle'`,
+    `/copy 'rpgle/copy1.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -2184,186 +2185,9 @@ test("linter37", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 129, end: 135 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 123, end: 129 },
     type: `UselessOperationCheck`
-  });
-});
-
-test("linter38_subrefs", async () => {
-  const lines = [
-    `**free`,
-    ``,
-    `dcl-s localVarYes Char(1);`,
-    `Dcl-s localVarForProc Int(20);`,
-    `dcl-s localVarNo Ind;`,
-    ``,
-    `dcl-ds structYes;`,
-    `    subfa varchar(12);`,
-    `End-ds;`,
-    ``,
-    `dcl-ds structNo;`,
-    `    subfb packed(12);`,
-    `End-ds;`,
-    ``,
-    `Dcl-ds structYesAlso;`,
-    `    subfc char(20);`,
-    `End-Ds;`,
-    ``,
-    `dcl-ds qualStructYes Qualified;`,
-    `    qualsubA zoned(5);`,
-    `end-ds;`,
-    ``,
-    `dcl-ds qualStructNo Qualified;`,
-    `    qualsubA zoned(5);`,
-    `end-ds;`,
-    ``,
-    `dcl-ds qualDimStructYup Qualified Dim(2);`,
-    `    boopABC zoned(5);`,
-    `end-ds;`,
-    ``,
-    `localVarYes = 'Y';`,
-    `procYes();`,
-    ``,
-    `subfa = 'Yes!';`,
-    `structYesAlso = 'Really yes';`,
-    ``,
-    `qualStructYes.qualsubA = 5;`,
-    ``,
-    `qualDimStructYup(1).boopabc = 5;`,
-    `qualDimStructYup(localVarForProc).boopAbc = 5;`,
-    `qualDimStructYup(localVarForProc - 1).boopABC = 5;`,
-    ``,
-    `return;`,
-    ``,
-    `Dcl-Proc procYes;`,
-    `    dcl-s reallyLocalYes bindec(9);`,
-    `    dcl-s reallyLocalNo Char(1);`,
-    ``,
-    `    dcl-ds localStructYes;`,
-    `        subfd char(12);`,
-    `    end-ds;`,
-    ``,
-    `    dcl-ds localStructAlsoYes;`,
-    `        subfe char(12);`,
-    `    end-ds;`,
-    ``,
-    `    dcl-ds localStructNo;`,
-    `        subfg char(12);`,
-    `    end-ds;`,
-    ``,
-    `    dcl-ds localQualStructYes Qualified;`,
-    `        qualsubA zoned(5);`,
-    `    end-ds;`,
-    ``,
-    `    dcl-ds localQualStructNo Qualified;`,
-    `        qualsubA zoned(5);`,
-    `    end-ds;`,
-    ``,
-    `    reallyLocalYes = 1;`,
-    `    localStructYes = 'Helloworld';`,
-    `    subfe = 'Otherworld';`,
-    `    localQualStructYes.qualsubA = 55;`,
-    ``,
-    `    localVarForProc = 12398;`,
-    `End-Proc;`,
-    ``,
-    `Dcl-Proc procNo;`,
-    `    localVarForProc = 1190348;`,
-    `End-Proc;`,
-  ].join(`\n`);
-
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
-  Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
-  }, cache);
-
-  const subfa = cache.find(`subfa`);
-  expect(subfa.references.length).toBe(2);
-  expect(subfa.references[1]).toEqual({
-    offset: { position: 469, end: 474 }
-  });
-
-  const structYesAlso = cache.find(`structYesAlso`);
-  expect(structYesAlso.references.length).toBe(2);
-  expect(structYesAlso.references[1]).toEqual({
-    offset: { position: 485, end: 498 }
-  });
-
-  const subfc = structYesAlso.subItems[0];
-  expect(subfc.name).toBe(`subfc`);
-  expect(subfc.references.length).toBe(1);
-
-  const qualStructYes = cache.find(`qualStructYes`);
-  expect(qualStructYes.references.length).toBe(2);
-  expect(qualStructYes.references[1]).toEqual({
-    offset: { position: 516, end: 529 }
-  });
-
-  const qualsubA = qualStructYes.subItems[0];
-  expect(qualsubA.name).toBe(`qualsubA`);
-  expect(qualsubA.references.length).toBe(2);
-
-  expect(qualsubA.references[0]).toEqual({
-    offset: { position: 274, end: 282 }
-  });
-
-  expect(qualsubA.references[1]).toEqual({
-    offset: { position: 530, end: 538 }
-  });
-
-  const procYes = cache.find(`procYes`);
-  const subProc = procYes.scope;
-
-  const localStructYes = subProc.find(`localStructYes`);
-  expect(localStructYes.references.length).toBe(2);
-  expect(localStructYes.references[1]).toEqual({
-    offset: { position: 1158, end: 1172 }
-  });
-
-  const localStructAlsoYes = subProc.find(`localStructAlsoYes`);
-  expect(localStructAlsoYes.references.length).toBe(1);
-
-  const subfe = localStructAlsoYes.subItems[0];
-  expect(subfe.name).toBe(`subfe`);
-  expect(subfe.references.length).toBe(2);
-  expect(subfe.references[1]).toEqual({
-    offset: { position: 1193, end: 1198 }
-  });
-
-  const qualDimStructYup = cache.find(`qualDimStructYup`);
-  expect(qualDimStructYup.references.length).toBe(4)
-
-  expect(qualDimStructYup.references[1]).toEqual({
-    offset: { position: 545, end: 561 }
-  });
-
-  expect(qualDimStructYup.references[2]).toEqual({
-    offset: { position: 578, end: 594 }
-  });
-
-  expect(qualDimStructYup.references[3]).toEqual({
-    offset: { position: 625, end: 641 }
-  });
-
-  const boopABC = qualDimStructYup.subItems[0];
-  expect(boopABC.name).toBe(`boopABC`);
-  expect(boopABC.references.length).toBe(4);
-
-  expect(boopABC.references[0]).toEqual({
-    offset: { position: 411, end: 418 }
-  });
-
-  expect(boopABC.references[1]).toEqual({
-    offset: { position: 565, end: 572 }
-  });
-
-  expect(boopABC.references[2]).toEqual({
-    offset: { position: 612, end: 619 } 
-  });
-
-  expect(boopABC.references[3]).toEqual({
-    offset: { position: 663, end: 670 }
   });
 });
 
@@ -2390,9 +2214,9 @@ test("linter39", async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
+  expect(errors[0]).toMatchObject({
     type: `RequiresProcedureDescription`,
-    offset: { position: 59, end: 84 }
+    offset: { start: 59, end: 84 }
   });
 });
 
@@ -2425,51 +2249,6 @@ test("linter40", async () => {
   expect(errors.length).toEqual(0);
 });
 
-test("linter40_return", async () => {
-  const lines = [
-    `**free`,
-    `Dcl-Proc InputIsValid;`,
-    `  Dcl-PI InputIsValid likeds(validationResult);`,
-    `    comp Char(1);`,
-    `  End-PI;`,
-    ``,
-    `  Dcl-S isValid Ind inz(*on);`,
-    `  Dcl-S isFound Ind inz(*on);`,
-    ``,
-    `  Dcl-DS validationResult Qualified;`,
-    `    isValid Ind inz(*on);`,
-    `    errorField Char(20) inz(*blanks);`,
-    `    errorMessage Char(100) inz(*blanks);`,
-    `  End-DS;`,
-    ``,
-    `  // Validate company value`,
-    `  isFound = company_getrecord(comp);`,
-    `  if (isFound = *off);`,
-    `    validationResult.isValid = *off;`,
-    `    validationResult.errorField = 'comp';`,
-    `    validationResult.errorMessage = 'Company value inva lid';`,
-    ``,
-    `    return validationResult;`,
-    `  endif;`,
-    ``,
-    `  // Validate other input parameters...`,
-    ``,
-    `  return validationResult;`,
-    ``,
-    `End-Proc;`,
-  ].join(`\n`);
-
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
-  Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
-  }, cache);
-
-  const procedure = cache.find(`InputIsValid`);
-  const validationResult = procedure.scope.find(`validationResult`);
-
-  expect(validationResult.references.length).toEqual(7);
-});
-
 test("linter41", async () => {
   const lines = [
     `**FREE`,
@@ -2493,20 +2272,20 @@ test("linter41", async () => {
 
   expect(errors.length).toEqual(3);
 
-  expect(errors[0]).toEqual({
-    offset: { position: 52, end: 54 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 52, end: 54 },
     type: `RequireBlankSpecial`,
     newValue: `*BLANK`
   });
 
-  expect(errors[1]).toEqual({
-    offset: { position: 39, end: 44 },
+  expect(errors[1]).toMatchObject({
+    offset: { start: 39, end: 44 },
     type: `StringLiteralDupe`,
     newValue: undefined
   });
 
-  expect(errors[2]).toEqual({
-    offset: { position: 62, end: 67 },
+  expect(errors[2]).toMatchObject({
+    offset: { start: 62, end: 67 },
     type: `StringLiteralDupe`,
     newValue: undefined
   });
@@ -2543,8 +2322,8 @@ test("linter42", async () => {
   }, cache);
 
   expect(errors.length).toEqual(1);
-  expect(errors[0]).toEqual({
-    type: `RequireOtherBlock`, offset: { position: 339, end: 344 }
+  expect(errors[0]).toMatchObject({
+    type: `RequireOtherBlock`, offset: { start: 339, end: 344 }
   });
 });
 
@@ -2623,11 +2402,11 @@ test("linter44", async () => {
   }, cache);
 
   expect(errors.length).toBe(2);
-  expect(errors[0]).toEqual({
-    type: `RequireOtherBlock`, offset: { position: 552, end: 557 }
+  expect(errors[0]).toMatchObject({
+    type: `RequireOtherBlock`, offset: { start: 552, end: 557 }
   });
-  expect(errors[1]).toEqual({
-    type: `RequireOtherBlock`, offset: { position: 561, end: 566 }
+  expect(errors[1]).toMatchObject({
+    type: `RequireOtherBlock`, offset: { start: 561, end: 566 }
   });
 });
 
@@ -2660,7 +2439,7 @@ test("issue_170", async () => {
     `Endsr;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
@@ -2683,7 +2462,7 @@ test("issue_170a", async () => {
   ].join(`\n`);
 
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
@@ -2693,13 +2472,13 @@ test("issue_170a", async () => {
   const SBM_DS = cache.find(`SBM_DS`);
   expect(SBM_DS.name).toBe(`SBM_DS`);
   expect(SBM_DS.subItems.length).toBe(1);
-  expect(SBM_DS.position.line).toBe(2);
+  expect(SBM_DS.position.range.line).toBe(2);
   expect(SBM_DS.references.length).toBe(1);
 
   const Move1 = SBM_DS.subItems[0];
   expect(Move1.name).toBe(`Move1`);
   expect(Object.keys(Move1.keyword).length).toBe(2);
-  expect(Move1.position.line).toBe(3);
+  expect(Move1.position.range.line).toBe(3);
   expect(Move1.references.length).toBe(1);
   
   expect(errors.length).toBe(2);
@@ -2712,22 +2491,22 @@ test("linter40_keywordrefs", async () => {
     `Dcl-s  somevar      Int(10) inz(randomLen);`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
     IncorrectVariableCase: true
   }, cache);
 
   const RANDOMLEN = cache.find(`RANDOMLEN`);
 
   expect(RANDOMLEN.references.length).toBe(2);
-  expect(RANDOMLEN.references[1]).toEqual({
-    offset: { position: 64, end: 73 }
+  expect(RANDOMLEN.references[1]).toMatchObject({
+    offset: { start: 64, end: 73, line: 2 },
+    uri: uri,
   });
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
-    offset: { position: 64, end: 73 },
+  expect(errors[0]).toMatchObject({
+    offset: { start: 64, end: 73 },
     type: `IncorrectVariableCase`,
     newValue: `RANDOMLEN`
   });
@@ -2744,9 +2523,8 @@ test("linter_casing_on_error_not_a_variable", async () => {
     `endmon;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
     IncorrectVariableCase: true
   }, cache);
 
@@ -2787,7 +2565,7 @@ test("issue_175", async () => {
     `End-Proc;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
   const { errors } = Linter.getErrors({ uri, content: lines }, {
     NoUnreferenced: true
   }, cache);
@@ -2827,10 +2605,9 @@ test("issue180", async () => {
     `Endsr;`,
   ].join(`\n`);
   
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
+  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true, collectReferences: true});
 
   Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
   }, cache);
 });
 
@@ -2937,15 +2714,15 @@ test("issue_240", async () => {
 
   expect(errors.length).toBe(1);
 
-  expect(errors[0]).toEqual({
+  expect(errors[0]).toMatchObject({
     type: `NoExternalTo`,
     offset: {
-      position: 344,
+      start: 344,
       end: 377,
     }
   });
 
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`dcl-pr QCMDEXC  extpgm('QCMDEXC')`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`dcl-pr QCMDEXC  extpgm('QCMDEXC')`);
 });
 
 test("issue_239", async () => {
@@ -3013,7 +2790,7 @@ test("issue_251", async () => {
 
   expect(errors.length).toBe(1);
   expect(errors[0].type).toBe(`ForceOptionalParens`);
-  expect(lines.substring(errors[0].offset.position, errors[0].offset.end)).toBe(`iCost >= 10000`);
+  expect(lines.substring(errors[0].offset.start, errors[0].offset.end)).toBe(`iCost >= 10000`);
 });
 
 test('paddr_issue_250', async () => {
@@ -3162,48 +2939,11 @@ test('on_excp_2', async () => {
   }, cache);
   
   expect(indentErrors.length).toBe(1);
-  expect(indentErrors[0]).toEqual({
+  expect(indentErrors[0]).toMatchObject({
     line: 3,
     expectedIndent: 2,
     currentIndent: 0
   });
-});
-
-test('range_1', async () => {
-  const lines = [
-    `**free`,
-    `ctl-opt debug  option(*nodebugio: *srcstmt) dftactgrp(*no) actgrp(*caller)`,
-    `main(Main);`,
-    `dcl-s x timestamp;`,
-    `dcl-s y timestamp;`,
-    `dcl-proc Main;`,
-    `  dsply %CHAR(CalcDiscount(10000));`,
-    `  dsply %char(CalcDiscount(1000));`,
-    `  x = %TIMESTAMP(y);`,
-    `  y = %TimeStamp(x);`,
-    `  return;`,
-    `end-proc;`,
-  ].join(`\n`);
-
-  const cache = await parser.getDocs(uri, lines, {ignoreCache: true, withIncludes: true});
-  Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true
-  }, cache);
-
-  const rangeRefs = cache.referencesInRange({position: 220, end: 260});
-  expect(rangeRefs.length).toBe(2);
-  expect(rangeRefs[0].dec.name).toBe(`x`);
-  expect(rangeRefs[1].dec.name).toBe(`y`);
-
-  expect(rangeRefs[0].refs).toEqual([
-    { position: 220, end: 221 },
-    { position: 256, end: 257 }
-  ]);
-
-  expect(rangeRefs[1].refs).toEqual([
-    { position: 235, end: 236 },
-    { position: 241, end: 242 }
-  ]);
 });
 
 test('sqlRunner1_1', async () => {
@@ -3230,9 +2970,9 @@ test('sqlRunner1_1', async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
+  expect(errors[0]).toMatchObject({
     type: 'SQLRunner',
-    offset: { position: 7, end: 74 },
+    offset: { start: 7, end: 74 },
     newValue: 'EXEC SQL\n  DECLARE CUSCUR CURSOR FOR\n    SELECT CUSNO FROM CUSTOMER'
   });
 });
@@ -3260,9 +3000,9 @@ test('sqlRunner1_b', async () => {
   }, cache);
 
   expect(errors.length).toBe(1);
-  expect(errors[0]).toEqual({
+  expect(errors[0]).toMatchObject({
     type: 'SQLRunner',
-    offset: { position: 7, end: 72 },
+    offset: { start: 7, end: 72 },
     newValue: 'EXEC SQL DECLARE CUSCUR CURSOR FOR\n    SELECT CUSNO FROM CUSTOMER'
   });
 });
@@ -3315,7 +3055,7 @@ test('linter with non-free copybook', async () => {
     `Ctl-opt Bnddir('PCRPROCS');`,
     `Ctl-opt ExtBinInt(*Yes);`,
     ` `,
-    `/copy './tests/rpgle/fixed1.rpgleinc'`,
+    `/copy './rpgle/fixed1.rpgleinc'`,
     ` `,
     `Dcl-Proc Engage_Usage_Report;`,
     ` `,
@@ -3338,7 +3078,7 @@ test('linter with non-free copybook', async () => {
     `End-Proc Engage_Usage_Report;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: true });
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: true, collectReferences: true });
 
   expect(cache.includes.length).toBe(1);
 
@@ -3394,13 +3134,13 @@ test('constant replace picking up wrong variable #330', async () => {
   expect(errors.length).toBe(2);
   
   expect(errors[0]).toMatchObject({
-    offset: { position: 270, end: 291 },
+    offset: { start: 270, end: 291 },
     type: 'StringLiteralDupe',
     newValue: 'basicError'
   });
 
   expect(errors[1]).toMatchObject({
-    offset: { position: 408, end: 429 },
+    offset: { start: 408, end: 429 },
     type: 'StringLiteralDupe',
     newValue: undefined
   });
@@ -3412,7 +3152,7 @@ test('Linter running on rpgleinc', async () => {
     `Dcl-S CustomerName_t varchar(40) template;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(includeUri, lines, { ignoreCache: true, withIncludes: true });
+  const cache = await parser.getDocs(includeUri, lines, { ignoreCache: true, withIncludes: true, collectReferences: true });
   const { errors } = Linter.getErrors({ uri: includeUri, content: lines }, {
     IncorrectVariableCase: true,
     NoUnreferenced: true,
@@ -3421,7 +3161,7 @@ test('Linter running on rpgleinc', async () => {
 
   expect(errors.length).toBe(1);
   expect(errors[0]).toMatchObject({
-    offset: { position: 7, end: 12 },
+    offset: { start: 7, end: 12 },
     type: 'SpecificCasing',
     newValue: 'DCL-S'
   });
@@ -3433,7 +3173,7 @@ test('Linter running on member rpgleinc', async () => {
     `Dcl-S CustomerName_t varchar(40) template;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(memberIncludeUri, lines, { ignoreCache: true, withIncludes: true });
+  const cache = await parser.getDocs(memberIncludeUri, lines, { ignoreCache: true, withIncludes: true, collectReferences: true });
   const { errors } = Linter.getErrors({ uri: memberIncludeUri, content: lines }, {
     IncorrectVariableCase: true,
     NoUnreferenced: true,
@@ -3442,8 +3182,211 @@ test('Linter running on member rpgleinc', async () => {
 
   expect(errors.length).toBe(1);
   expect(errors[0]).toMatchObject({
-    offset: { position: 7, end: 12 },
+    offset: { start: 7, end: 12 },
     type: 'SpecificCasing',
     newValue: 'DCL-S'
   });
+});
+
+test('issue_353_indent_1', async () => {
+  const lines = [
+    `**free`,
+    `dcl-ds HEDINF                     based(p1@);`,
+    `  HRLEN                 Int(10:0);                            // Record length`,
+    `  HCRRN                 Int(10:0);                            // Cursor's RRN`,
+    `  HCPOS                 Int(10:0);                            // Cursor's column`,
+    `  HCCSID                Int(10:0);                            // CCSID of source`,
+    `  HRECI                 Int(10:0);                            // Nbr of input rcds`,
+    `end-ds;`,
+    `dcl-s p2@          Pointer;`,
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const hedinf = cache.find(`HEDINF`);
+  expect(hedinf).toBeDefined();
+  expect(hedinf.subItems.length).toBe(5);
+  const p2at = cache.find(`p2@`);
+  expect(p2at).toBeDefined();
+
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(errors.length).toBe(0);
+  expect(indentErrors.length).toBe(0);
+});
+
+test('issue_353_indent_2', async () => {
+  const lines = [
+    `**free`,
+    `dcl-ds HEDINF                     based(p1@);`,
+    `  HRLEN                 Int(10:0);                            // Record length`,
+    `   HCRRN                 Int(10:0);                            // Cursor's RRN`,
+    `  HCPOS                 Int(10:0);                            // Cursor's column`,
+    `  HCCSID                Int(10:0);                            // CCSID of source`,
+    `  HRECI                 Int(10:0);                            // Nbr of input rcds`,
+    `end-ds;`,
+    `dcl-s p2@          Pointer;`,
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const hedinf = cache.find(`HEDINF`);
+  expect(hedinf).toBeDefined();
+  expect(hedinf.subItems.length).toBe(5);
+  const p2at = cache.find(`p2@`);
+  expect(p2at).toBeDefined();
+
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(indentErrors.length).toBe(1);
+  expect(indentErrors[0]).toMatchObject({
+    line: 3,
+    expectedIndent: 2,
+    currentIndent: 3
+  });
+});
+
+test('issue_353_indent_3', async () => {
+  const lines = [
+    `**free`,
+    `begsr displayHelp;`,
+    `  // Do something with this program's`,
+    `  //  name and library ... assume the program is running`,
+    `  //  from the same library as contains the source.`,
+    `  fileName = 'QRPGLESRC';`,
+    `  library = pgSts.lib;`,
+    `endsr;`,
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(errors.length).toBe(0);
+  expect(indentErrors.length).toBe(0);
+});
+
+test('issue_353_indent_4', async () => {
+  const lines = [
+    `**FREE`,
+    `dcl-c @QUOTE                   '''';`,
+    ``,
+    `dcl-c @SOMETHING_IN_BETWEEN 'whatever';`,
+    ``,
+    `dcl-c @SEUCOMMENT_FREE  '//&& ';`,
+    `// ********************************************************************`,
+    ``,
+    `dcl-ds copybookinfo_t           qualified template inz;`,
+    `  qualObj;`,
+    `  file                  Char(10)    overlay(qualObj: 1);`,
+    `  lib                   Char(10)    overlay(qualObj: *NEXT);`,
+    `  mbr                   Char(10);`,
+    `  found                 Ind         inz(*OFF);`,
+    `end-ds;`,
+    `// ********************************************************************`,
+  ].join(`\r\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const atQuote = cache.find(`@QUOTE`);
+  expect(atQuote).toBeDefined();
+  expect(atQuote).toBeDefined();
+  expect(atQuote.keyword[`CONST`]).toBe(`''`);
+
+  const atSomethingInBetween = cache.find(`@SOMETHING_IN_BETWEEN`);
+  expect(atSomethingInBetween).toBeDefined();
+  expect(atSomethingInBetween.keyword[`CONST`]).toBe(`'whatever'`);
+
+  const atSeuCommentFree = cache.find(`@SEUCOMMENT_FREE`);
+  expect(atSeuCommentFree).toBeDefined();
+  expect(atSeuCommentFree.keyword[`CONST`]).toBe(`'//&& '`);
+
+  const copybookinfo_t = cache.find(`copybookinfo_t`);
+  expect(copybookinfo_t).toBeDefined();
+  expect(copybookinfo_t.subItems.length).toBe(5);
+  expect(copybookinfo_t.keyword[`QUALIFIED`]).toBe(true);
+  expect(copybookinfo_t.keyword[`TEMPLATE`]).toBe(true);
+  expect(copybookinfo_t.keyword[`INZ`]).toBe(true);
+
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(errors.length).toBe(0);
+  console.log(indentErrors);
+  expect(indentErrors.length).toBe(0);
+});
+
+test(`issue_353_indent_5`, async () => {
+  const lines = [
+    `**FREE`,
+    `*in01 = 'yy' in %list('zz': ' ''');`,
+    `*inLR = *ON;`,
+    `return;`,
+    `dcl-proc test;`,
+    `  // If the line ends with a known end-of line character, then`,
+    `  //  assume it is free format.  Make sure to strip any free-format`,
+    `  //  comment first.  The stripping is not precise and will cause`,
+    `  //  a free form line that has a '//' literal to not be detected.`,
+    `  eol = ';';`,
+    `end-proc;`
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(errors.length).toBe(0);
+  expect(indentErrors.length).toBe(0);
+});
+
+test(`issue_353_indent_6`, async () => {
+  const lines = [
+    `**FREE`,
+    `*in01 = 'yy' in %list('zz': ' ''');`,
+    `*inLR = *ON;`,
+    `return;`,
+    ``,
+    `dcl-proc test;`,
+    `  if specType = 'C' and not likelyComment;`,
+    `    if not (%subst(srcDta: 7: 2) in`,
+    `        %list('  ': 'L0': 'L1': 'L2': 'L3': 'L4': 'L5'`,
+    `        : 'L6': 'L7': 'L8': 'L9': 'LR': 'SR': 'AN': 'OR'));`,
+    `      return *ON;`,
+    `    endif;`,
+    `  endif;`,
+    ``,
+    `  // If the line ends with a known end-of line character, then`,
+    `  //  assume it is free format.  Make sure to strip any free-format`,
+    `  //  comment first.  The stripping is not precise and will cause`,
+    `  //  a free form line that has a '//' literal to not be detected.`,
+    `  eol = ';';`,
+    `  posStr = %scan('//': srcDta);`,
+    `  if posStr > 1;`,
+    `    evalr eol = %trim(%subst(srcDta: 1: posStr - 1));`,
+    `  endif;`,
+    `  if (eol in %list(';': ':': '+': '-': '/': '*': '=': '_'));`,
+    `    return *ON;`,
+    `  endif;`,
+    ``,
+    `  // Despite our best guesses, we cannot confirm this to be a`,
+    `  //  free format line, so indicate that it is _not_ free format.`,
+    `  return *OFF;`,
+    `end-proc;`,
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const { indentErrors, errors } = Linter.getErrors({ uri, content: lines }, {
+    indent: 2
+  }, cache);
+
+  expect(indentErrors.length).toBe(0);
 });

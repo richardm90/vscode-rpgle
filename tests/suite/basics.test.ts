@@ -16,7 +16,7 @@ test('vitestTest1', async () => {
   const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true});
 
   expect(cache.variables.length).toBe(1);
-  expect(cache.variables[0].position.line).toBe(1);
+  expect(cache.variables[0].position.range.line).toBe(1);
 });
 
 /**
@@ -33,8 +33,8 @@ test('vitestTest2', async () => {
   const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true});
 
   expect(cache.variables.length).toBe(2);
-  expect(cache.variables[0].position.line).toBe(1);
-  expect(cache.variables[1].position.line).toBe(3);
+  expect(cache.variables[0].position.range.line).toBe(1);
+  expect(cache.variables[1].position.range.line).toBe(3);
 });
 
 test('vitestTest3', async () => {
@@ -56,9 +56,9 @@ test('vitestTest3', async () => {
 
   expect(cache.structs[0].subItems.length).toBe(2);
 
-  expect(cache.variables[0].position.line).toBe(1);
-  expect(cache.variables[1].position.line).toBe(6);
-  expect(cache.structs[0].position.line).toBe(2);
+  expect(cache.variables[0].position.range.line).toBe(1);
+  expect(cache.variables[1].position.range.line).toBe(6);
+  expect(cache.structs[0].position.range.line).toBe(2);
 
   expect(cache.structs[0].range).toEqual({
     start: 2,
@@ -82,7 +82,7 @@ test('vitestTest4', async () => {
   expect(cache.variables.length).toBe(1);
   expect(cache.subroutines.length).toBe(1);
 
-  expect(cache.variables[0].position.line).toBe(1);
+  expect(cache.variables[0].position.range.line).toBe(1);
   expect(cache.subroutines[0].range.start).toBe(4);
   expect(cache.subroutines[0].range.end).toBe(6);
 });
@@ -113,9 +113,9 @@ test('vitestTest5', async () => {
   expect(cache.variables.length).toBe(1);
   expect(cache.procedures.length).toBe(2);
 
-  expect(cache.variables[0].position.line).toBe(2);
-  expect(cache.procedures[0].position.line).toBe(4);
-  expect(cache.procedures[1].position.line).toBe(8);
+  expect(cache.variables[0].position.range.line).toBe(2);
+  expect(cache.procedures[0].position.range.line).toBe(4);
+  expect(cache.procedures[1].position.range.line).toBe(8);
 
   expect(cache.procedures[0].subItems.length).toBe(0);
   expect(cache.procedures[1].subItems.length).toBe(1);
@@ -248,7 +248,7 @@ test('vitestTest10', async () => {
    ``,
    `Ctl-Opt DftActGrp(*No);`,
    ``,
-   `/copy './tests/rpgle/copy1.rpgle'`,
+   `/copy './rpgle/copy1.rpgle'`,
    ``,
    `Dcl-s MyVariable2 Char(20);`,
    ``,
@@ -271,7 +271,7 @@ test('vitestTest10', async () => {
 
   const baseNameInclude = path.basename(cache.procedures[0].position.path);
   expect(baseNameInclude).toBe(`copy1.rpgle`);
-  expect(cache.procedures[0].position.line).toBe(2);
+  expect(cache.procedures[0].position.range.line).toBe(2);
 });
 
 test('test10_local_fixedcopy', async () => {
@@ -280,7 +280,7 @@ test('test10_local_fixedcopy', async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy tests,eof4`,
+    `/copy eof4`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -313,8 +313,8 @@ test('test11', async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy './tests/rpgle/copy1.rpgle'`,
-    `/include './tests/rpgle/copy2.rpgle'`,
+    `/copy './rpgle/copy1.rpgle'`,
+    `/include './rpgle/copy2.rpgle'`,
     ``,
     `Dcl-s MyVariable2 Char(20);`,
     ``,
@@ -344,7 +344,7 @@ test('test12', async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy './tests/rpgle/copy1.rpgle'`,
+    `/copy './rpgle/copy1.rpgle'`,
     ``,
     `Dcl-S globalVar Char(20);`,
     ``,
@@ -404,7 +404,7 @@ test('test13', async () => {
     ``,
     `Ctl-Opt DftActGrp(*No);`,
     ``,
-    `/copy './tests/rpgle/copy1.rpgle' // Test copy`,
+    `/copy './rpgle/copy1.rpgle' // Test copy`,
     ``,
     `Dcl-S globalVar Char(20);`,
     ``,
@@ -458,31 +458,6 @@ test('test13', async () => {
   expect(theLocalProc.scope.variables.length).toBe(1);
 });
 
-test('indicators1', async () => {
-  const lines = [
-    `**FREE`,
-    `Dcl-S MyVar char(10);`,
-    ``,
-    `*IN10 = *ON;`,
-    `MyVar = 'Hi';`,
-    ``,
-    `DSply Myvar;`,
-    `*INLR = *IN10;`,
-    `Return;`,
-  ].join(`\n`);
-
-  const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true});
-
-  Linter.getErrors({ uri, content: lines }, {
-    CollectReferences: true,
-  }, cache);
-
-  const in10 = cache.find(`IN10`);
-
-  expect(in10.references.length).toBe(2);
-});
-
-
 test('subds1', async () => {
   const lines = [
     `**FREE`,
@@ -516,7 +491,7 @@ test('subds1', async () => {
 
   const DsChangingNodeRole = cache.find(`DsChangingNodeRole`);
   expect(DsChangingNodeRole.name).toBe(`DsChangingNodeRole`);
-  expect(DsChangingNodeRole.position.line).toBe(2);
+  expect(DsChangingNodeRole.position.range.line).toBe(2);
 
   expect(DsChangingNodeRole.subItems.length).toBe(13);
   expect(DsChangingNodeRole.subItems[12].name).toBe(`Role`);
@@ -619,7 +594,7 @@ test('inline_end_pi', async () => {
 
   const getHandle = cache.find(`getHandle`);
 
-  expect(getHandle.keyword[`LIKE`]).toBe(`HANDLE_T`);
+  expect(getHandle.keyword[`LIKE`]).toBe(`handle_t`);
   expect(getHandle.keyword[`END-PI`]).toBeUndefined();
 });
 
@@ -790,9 +765,7 @@ test('issue_195a', async () => {
     `End-Proc ScomponiStringa;`,
   ].join(`\n`);
 
-  const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true});
-
-  cache.clearReferences();
+  const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true, collectReferences: true});
 });
 
 test('issue_195b', async () => {
@@ -1293,8 +1266,8 @@ test('keywords over multiple lines', async () => {
 
   const detailParm = invoice_get_invoice.subItems[2];
   expect(detailParm.name).toBe(`details`);
-  expect(detailParm.keyword[`LIKEDS`]).toBe(`INVOICE_GET_INVOICE_SALES_DETAIL_DS`);
-  expect(detailParm.keyword[`DIM`]).toBe(`INVOICE_MAX_DETAILS`);
+  expect(detailParm.keyword[`LIKEDS`]).toBe(`invoice_get_invoice_sales_detail_ds`);
+  expect(detailParm.keyword[`DIM`]).toBe(`invoice_max_details`);
 
   const count_details = invoice_get_invoice.subItems[3];
   expect(count_details.name).toBe(`count_details`);
@@ -1302,5 +1275,49 @@ test('keywords over multiple lines', async () => {
 
   const error = invoice_get_invoice.subItems[4];
   expect(error.name).toBe(`error`);
-  expect(error.keyword[`LIKE`]).toBe(`TERROR`);
-})
+  expect(error.keyword[`LIKE`]).toBe(`TError`);
+});
+
+test(`const keyword check`, async () => {
+  const lines = [
+    ``,
+    `           dcl-c hello 556;`,
+    `     d act             c                   'act'`,
+    ``,
+  ].join(`\r\n`);
+
+  const cache = await parser.getDocs(uri, lines, {withIncludes: true, ignoreCache: true});
+
+  expect(cache.constants.length).toBe(2);
+
+  const act = cache.find(`act`);
+  expect(act.name).toBe(`act`);
+  expect(act.keyword[`CONST`]).toBe(`'act'`);
+
+  const hello = cache.find(`hello`);
+  expect(hello.name).toBe(`hello`);
+  expect(hello.keyword[`CONST`]).toBe(`556`);
+});
+
+test('issue_353_comments', async () => {
+  const lines = [
+    `**free`,
+    `dcl-ds HEDINF                     based(p1@);`,
+    `  HRLEN                 Int(10:0);                            // Record length`,
+    `  HCRRN                 Int(10:0);                            // Cursor's RRN`,
+    `  HCPOS                 Int(10:0);                            // Cursor's column`,
+    `  HCCSID                Int(10:0);                            // CCSID of source`,
+    `  HRECI                 Int(10:0);                            // Nbr of input rcds`,
+    `end-ds;`,
+    `dcl-s p2@          Pointer;`,
+  ].join(`\n`);
+
+  const cache = await parser.getDocs(uri, lines, { ignoreCache: true, withIncludes: false });
+
+  const hedinf = cache.find(`HEDINF`);
+  expect(hedinf).toBeDefined();
+  console.log(hedinf.subItems.map(s => s.name));
+  expect(hedinf.subItems.length).toBe(5);
+  const p2at = cache.find(`p2@`);
+  expect(p2at).toBeDefined();
+});

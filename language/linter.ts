@@ -6,8 +6,9 @@ import oneLineTriggers from "./models/oneLineTriggers";
 import { Range, Position } from "./models/DataPoints";
 import opcodes from "./models/opcodes";
 import Document from "./document";
-import { IssueRange, Offset, Rules, SelectBlock } from "./parserTypes";
+import { IssueRange, Rules, SelectBlock } from "./parserTypes";
 import Declaration from "./models/declaration";
+import { IRange, Token } from "./types";
 
 const BANNED_FROM_INCLUDES = [`NoUnreferenced`];
 const INCLUDE_EXTENSIONS = [`rpgleinc`, `rpgleh`];
@@ -105,16 +106,6 @@ export default class Linter {
 
     let opcode: string;
 
-    if (rules.NoUnreferenced) {
-      // We need to collect references for this to work correctly.
-      rules.CollectReferences = true;
-    }
-
-    // Clear out all the old references.
-    if (rules.CollectReferences) {
-      globalScope.clearReferences();
-    }
-
     // Make all external refs uppercase.
     if (rules.NoExternalTo && rules.NoExternalTo.length) {
       rules.NoExternalTo = rules.NoExternalTo.map(val => val.toUpperCase());
@@ -122,7 +113,7 @@ export default class Linter {
 
     const selectBlocks: SelectBlock[] = [];
 
-    const stringLiterals: { value: string, list: { line: number, offset: Offset }[] }[] = [];
+    const stringLiterals: { value: string, list: { line: number, offset: IRange }[] }[] = [];
 
     let directiveScope = 0;
     let currentRule = skipRules.none;
@@ -148,7 +139,7 @@ export default class Linter {
 
               if (startSpaces === 0) {
                 errors.push({
-                  offset: { position: statement[0].range.start, end: statement[0].range.start + 2 },
+                  offset: { start: statement[0].range.start, end: statement[0].range.start + 2 },
                   type: `PrettyComments`,
                   newValue: `// `,
                 });
@@ -209,7 +200,7 @@ export default class Linter {
                 if (lineNumber > 0 && statement[0].value.startsWith(`**`)) {
                   if (rules.NoCTDATA) {
                     errors.push({
-                      offset: { position: statement[0].range.start, end: statement[0].range.end },
+                      offset: statement[0].range,
                       type: `NoCTDATA`,
                     });
                   }
@@ -232,7 +223,7 @@ export default class Linter {
                           const possibleValue = (data.availableIncludes && data.availableIncludes.length > 0) ? data.availableIncludes.find(cPathValue => cPathValue.toUpperCase().includes(pathValue.toUpperCase())) : undefined;
 
                           errors.push({
-                            offset: { position: path.range.start, end: path.range.end + path.value.length },
+                            offset: { start: path.range.start, end: path.range.end + path.value.length },
                             type: `IncludeMustBeRelative`,
                             newValue: possibleValue ? `'${possibleValue}'` : undefined
                           });
@@ -243,7 +234,7 @@ export default class Linter {
                           if (pathValue.startsWith(`/`) === true) {
                             // Bad. Path must not be absolute.
                             errors.push({
-                              offset: { position: path.range.start, end: path.range.end },
+                              offset: { start: path.range.start, end: path.range.end },
                               type: `IncludeMustBeRelative`
                             });
                           } else
@@ -254,7 +245,7 @@ export default class Linter {
                                 if (pathValue !== possibleValue) {
                                   // But if they're not the same, offer a fix
                                   errors.push({
-                                    offset: { position: path.range.start, end: path.range.end },
+                                    offset: { start: path.range.start, end: path.range.end },
                                     type: `IncludeMustBeRelative`,
                                     newValue: `'${possibleValue}'`
                                   });
@@ -278,7 +269,7 @@ export default class Linter {
                             if (pathValue !== possibleValue) {
                               // But if they're not the same, offer a fix
                               errors.push({
-                                offset: { position: statement[1].range.start, end: statement[3].range.end },
+                                offset: { start: statement[1].range.start, end: statement[3].range.end },
                                 type: `IncludeMustBeRelative`,
                                 newValue: `'${possibleValue}'`
                               });
@@ -291,7 +282,7 @@ export default class Linter {
                         // /INCLUDE or /COPY is way to long.
                         errors.push({
                           type: `IncludeMustBeRelative`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -305,7 +296,7 @@ export default class Linter {
                       }
                       if (correctValue !== correctDirective) {
                         errors.push({
-                          offset: { position: statement[0].range.start, end: statement[0].range.end },
+                          offset: statement[0].range,
                           type: `CopybookDirective`,
                           newValue: correctDirective
                         });
@@ -317,7 +308,7 @@ export default class Linter {
                 if (rules.DirectiveCase === `lower`) {
                   if (value !== value.toLowerCase()) {
                     errors.push({
-                      offset: { position: statement[0].range.start, end: statement[0].range.end },
+                      offset: statement[0].range,
                       type: `DirectiveCase`,
                       newValue: value.toLowerCase()
                     });
@@ -327,7 +318,7 @@ export default class Linter {
                 if (rules.DirectiveCase === `upper`) {
                   if (value !== value.toUpperCase()) {
                     errors.push({
-                      offset: { position: statement[0].range.start, end: statement[0].range.end },
+                      offset: statement[0].range,
                       type: `DirectiveCase`,
                       newValue: value.toUpperCase()
                     });
@@ -352,7 +343,7 @@ export default class Linter {
                     }
                     if (statement[0].value !== expected) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `SpecificCasing`,
                         newValue: expected
                       });
@@ -364,7 +355,7 @@ export default class Linter {
 
                 if (value.match(/^\d/)) {
                   errors.push({
-                    offset: { position: statement[1].range.start, end: statement[1].range.end },
+                    offset: { start: statement[1].range.start, end: statement[1].range.end },
                     type: `InvalidDeclareNumber`,
                   });
                 }
@@ -373,7 +364,7 @@ export default class Linter {
                   case `BEGSR`:
                     if (inSubroutine) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `UnexpectedEnd`,
                       });
                     }
@@ -384,13 +375,13 @@ export default class Linter {
                       if (rules.NoLocalSubroutines) {
                         errors.push({
                           type: `NoLocalSubroutines`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     } else {
                       if (rules.NoGlobalSubroutines) {
                         errors.push({
-                          offset: { position: statement[0].range.start, end: statement[0].range.end },
+                          offset: statement[0].range,
                           type: `NoGlobalSubroutines`
                         });
                       }
@@ -399,7 +390,7 @@ export default class Linter {
                   case `DCL-PROC`:
                     if (inSubroutine || inProcedure) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `UnexpectedEnd`,
                       });
                     }
@@ -413,7 +404,7 @@ export default class Linter {
                         if (!procDef.description) {
                           errors.push({
                             type: `RequiresProcedureDescription`,
-                            offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                            offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                           });
                         }
                       }
@@ -423,7 +414,7 @@ export default class Linter {
                     if (rules.UppercaseConstants) {
                       if (value !== value.toUpperCase()) {
                         errors.push({
-                          offset: { position: statement[1].range.start, end: statement[1].range.end },
+                          offset: { start: statement[1].range.start, end: statement[1].range.end },
                           type: `UppercaseConstants`,
                           newValue: value.toUpperCase()
                         });
@@ -448,7 +439,7 @@ export default class Linter {
                           const keywordValue = statement.find((part, index) => index > extIndex && part.type === `word`);
                           if (keywordValue) {
                             errors.push({
-                              offset: { position: keywordValue.range.start, end: keywordValue.range.end },
+                              offset: { start: keywordValue.range.start, end: keywordValue.range.end },
                               type: `NoExtProgramVariable`
                             });
                           }
@@ -458,7 +449,7 @@ export default class Linter {
                         // Not EXTPROC / EXTPGM found. Likely don't need this PR if it's for local procedure.
                         errors.push({
                           type: `PrototypeCheck`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -473,7 +464,7 @@ export default class Linter {
                       if (statement.some(part => part.value && part.value.toUpperCase() === `OCCURS`)) {
                         errors.push({
                           type: `NoOCCURS`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -482,7 +473,7 @@ export default class Linter {
                       if (!statement.some(part => part.value && [`LIKEDS`, `LIKEREC`, `QUALIFIED`].includes(part.value.toUpperCase()))) {
                         errors.push({
                           type: `QualifiedCheck`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -491,7 +482,7 @@ export default class Linter {
                       if (statement.some(part => part.type === `special` && part.value.toUpperCase() === `*N`)) {
                         errors.push({
                           type: `BlankStructNamesCheck`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -500,7 +491,7 @@ export default class Linter {
                       if (statement.some(part => [`CTDATA`, `*CTDATA`].includes(part.value.toUpperCase()))) {
                         errors.push({
                           type: `NoCTDATA`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -519,7 +510,7 @@ export default class Linter {
                         const name = statement[1].value.toUpperCase();
                         if (!opcodes.includes(name)) {
                           errors.push({
-                            offset: { position: statement[0].range.start, end: statement[0].range.end + 1 },
+                            offset: { start: statement[0].range.start, end: statement[0].range.end + 1 },
                             type: `UselessOperationCheck`,
                           });
                         }
@@ -547,7 +538,7 @@ export default class Linter {
                     }
                     if (statement[0].value !== expected) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `SpecificCasing`,
                         newValue: expected
                       });
@@ -559,7 +550,7 @@ export default class Linter {
                   case `ENDSR`:
                     if (!inSubroutine) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `UnexpectedEnd`,
                       });
                     } else {
@@ -569,7 +560,7 @@ export default class Linter {
                     if (inProcedure === false) {
                       if (rules.NoGlobalSubroutines) {
                         errors.push({
-                          offset: { position: statement[0].range.start, end: statement[0].range.end },
+                          offset: statement[0].range,
                           type: `NoGlobalSubroutines`
                         });
                       }
@@ -584,7 +575,7 @@ export default class Linter {
                   case `END-PROC`:
                     if (inProcedure === false || inSubroutine) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `UnexpectedEnd`,
                       });
                     }
@@ -595,7 +586,7 @@ export default class Linter {
                   case `END-PI`:
                     if (inPrototype === false) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `UnexpectedEnd`,
                       });
                     }
@@ -622,7 +613,7 @@ export default class Linter {
                     }
                     if (statement[0].value !== expected) {
                       errors.push({
-                        offset: { position: statement[0].range.start, end: statement[0].range.end },
+                        offset: statement[0].range,
                         type: `SpecificCasing`,
                         newValue: expected
                       });
@@ -636,7 +627,7 @@ export default class Linter {
                     if (statement[1] && statement[1].type !== `openbracket`) {
                       if (rules.UselessOperationCheck) {
                         errors.push({
-                          offset: { position: statement[0].range.start, end: statement[0].range.end + 1 },
+                          offset: { start: statement[0].range.start, end: statement[0].range.end + 1 },
                           type: `UselessOperationCheck`,
                         });
                       }
@@ -646,7 +637,7 @@ export default class Linter {
                     if (rules.NoGlobalSubroutines && !inProcedure) {
                       errors.push({
                         type: `NoGlobalSubroutines`,
-                        offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                        offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                       });
                     }
                     break;
@@ -656,7 +647,7 @@ export default class Linter {
                         if (globalScope.subroutines.find(sub => sub.name.toUpperCase() === statement[1].value.toUpperCase())) {
                           errors.push({
                             type: `NoGlobalSubroutines`,
-                            offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                            offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                           });
                         }
                       }
@@ -664,7 +655,7 @@ export default class Linter {
                     break;
 
                   case `EXEC`:
-                    const statementOffset = { position: statement[0].range.start, end: statement[statement.length - 1].range.end };
+                    const statementOffset = { start: statement[0].range.start, end: statement[statement.length - 1].range.end };
                     isEmbeddedSQL = true;
 
                     if (rules.NoSELECTAll) {
@@ -709,7 +700,7 @@ export default class Linter {
                           const prior = statement[index - 1];
                           if (prior && ![`dot`, `seperator`].includes(prior.type)) {
                             errors.push({
-                              offset: { position: part.range.start, end: part.range.end },
+                              offset: part.range,
                               type: `SQLHostVarCheck`,
                               newValue: `:${part.value}`
                             });
@@ -725,7 +716,7 @@ export default class Linter {
                         errors.push({
                           type: `SQLRunner`,
                           offset: statementOffset,
-                          newValue: data.content.substring(statementOffset.position, statementOffset.end)
+                          newValue: data.content.substring(statementOffset.start, statementOffset.end)
                         });
                       }
                     }
@@ -734,7 +725,7 @@ export default class Linter {
                   case `SELECT`:
                     selectBlocks.push({
                       otherBlockExists: false,
-                      offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                      offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                     });
                     break;
                   case `OTHER`:
@@ -750,7 +741,7 @@ export default class Linter {
                       if (rules.RequireOtherBlock && latestSelect && !latestSelect.otherBlockExists) {
                         errors.push({
                           type: `RequireOtherBlock`,
-                          offset: { position: statement[0].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[0].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -766,7 +757,7 @@ export default class Linter {
                       if (statement[1].type !== `openbracket` || lastStatement.type !== `closebracket`) {
                         errors.push({
                           type: `ForceOptionalParens`,
-                          offset: { position: statement[1].range.start, end: statement[statement.length - 1].range.end }
+                          offset: { start: statement[1].range.start, end: statement[statement.length - 1].range.end }
                         });
                       }
                     }
@@ -776,7 +767,7 @@ export default class Linter {
             }
           }
 
-          let part;
+          let part: Token;
 
           if (statement.length > 0) {
             // const isSQL = (statement[0].type === `word` && statement[0].value.toUpperCase() === `EXEC`);
@@ -801,26 +792,11 @@ export default class Linter {
                         }
                         if (part.value !== expected) {
                           errors.push({
-                            offset: { position: part.range.start, end: part.range.end },
+                            offset: part.range,
                             type: `SpecificCasing`,
                             newValue: expected
                           });
                         }
-                      }
-                    }
-                    break;
-
-
-                  case `special`:
-                    if (rules.CollectReferences) {
-                      value = part.value.substring(1).toUpperCase();
-                      const defRef = globalScope.find(value);
-
-                      if (defRef) {
-                        defRef.references.push({
-                          offset: { position: part.range.start, end: part.range.end },
-                          type: null,
-                        });
                       }
                     }
                     break;
@@ -833,7 +809,7 @@ export default class Linter {
                         const existingVariable = globalScope.variables.find(variable => variable.name.toUpperCase() === upperName);
                         if (existingVariable) {
                           errors.push({
-                            offset: { position: part.range.start, end: part.range.end },
+                            offset: part.range,
                             type: `NoGlobalsInProcedures`,
                           });
                         }
@@ -851,7 +827,7 @@ export default class Linter {
                           const definedName = definedNames.find(defName => defName.toUpperCase() === upperName);
                           if (definedName && definedName !== part.value) {
                             errors.push({
-                              offset: { position: part.range.start, end: part.range.end },
+                              offset: part.range,
                               type: `IncorrectVariableCase`,
                               newValue: definedName
                             });
@@ -898,84 +874,9 @@ export default class Linter {
 
                           if (requiresBlock) {
                             errors.push({
-                              offset: { position: part.range.start, end: part.range.end },
+                              offset: part.range,
                               type: `RequiresParameter`,
                             });
-                          }
-                        }
-                      }
-                    }
-
-                    if (rules.CollectReferences) {
-                      if (statement[i - 1] && statement[i - 1].type === `dot`) break;
-
-                      // We might be referencing a subfield in a structure, so we grab the name in scope
-                      // then we actually do the lookup against that
-                      const parentDeclareBlock: string | undefined = inStruct[inStruct.length - 1];
-                      const inDeclareBlock = parentDeclareBlock && parentDeclareBlock.toUpperCase() !== upperName; 
-                      const lookupName = inDeclareBlock ? parentDeclareBlock : upperName;
-
-                      let defRef: Declaration;
-                      if (currentProcedure && currentProcedure.scope) {
-                        defRef = currentProcedure.scope.find(lookupName);
-
-                        if (!defRef) {
-                          defRef = currentProcedure.subItems.find(def => def.name.toUpperCase() === lookupName);
-                        }
-                      }
-
-                      if (!defRef) {
-                        defRef = globalScope.find(lookupName);
-                      }
-
-                      if (defRef) {
-
-                        if (inDeclareBlock) {
-                          // If we did the lookup against a parent DS, look for the subfield and add the reference there
-                          defRef = defRef.subItems.find(sub => sub.name.toUpperCase() === upperName);
-
-                          if (defRef) {
-                            defRef.references.push({
-                              offset: { position: part.range.start, end: part.range.end },
-                            });
-                          }
-
-                        } else {
-
-                          defRef.references.push({
-                            offset: { position: part.range.start, end: part.range.end },
-                          });
-
-                          if (defRef.keyword[`QUALIFIED`]) {
-                            let nextPartIndex = i + 1;
-
-                            if (statement[nextPartIndex]) {
-                              // First, check if there is an array call here and skip over it
-                              if (statement[nextPartIndex].type === `openbracket`) {
-                                nextPartIndex = statement.findIndex((value, index) => index > nextPartIndex && value.type === `closebracket`);
-
-                                if (nextPartIndex >= 0) nextPartIndex++;
-                              }
-
-                              // Check if the next part is a dot
-                              if (statement[nextPartIndex] && statement[nextPartIndex].type === `dot`) {
-                                nextPartIndex++;
-
-                                // Check if the next part is a word
-                                if (statement[nextPartIndex] && statement[nextPartIndex].type === `word` && statement[nextPartIndex].value) {
-                                  const subItemPart = statement[nextPartIndex];
-                                  const subItemName = subItemPart.value.toUpperCase();
-
-                                  // Find the subitem
-                                  const subItemDef = defRef.subItems.find(subfield => subfield.name.toUpperCase() == subItemName);
-                                  if (subItemDef) {
-                                    subItemDef.references.push({
-                                      offset: { position: subItemPart.range.start, end: subItemPart.range.end },
-                                    });
-                                  }
-                                }
-                              }
-                            }
                           }
                         }
                       }
@@ -985,7 +886,7 @@ export default class Linter {
                   case `string`:
                     if (part.value.substring(1, part.value.length - 1).trim() === `` && rules.RequireBlankSpecial && !isEmbeddedSQL) {
                       errors.push({
-                        offset: { position: part.range.start, end: part.range.end },
+                        offset: part.range,
                         type: `RequireBlankSpecial`,
                         newValue: `*BLANK`
                       });
@@ -1006,7 +907,7 @@ export default class Linter {
                       // Then add our new found literal location to the list
                       foundBefore.list.push({
                         line: lineNumber,
-                        offset: { position: part.range.start, end: part.range.end }
+                        offset: part.range
                       });
                     }
                     break;
@@ -1127,11 +1028,11 @@ export default class Linter {
             callLoc = (callLoc.startsWith(`'`) && callLoc.endsWith(`'`) ? callLoc.substring(1, callLoc.length - 1) : callLoc);
 
             if (rules.NoExternalTo.includes(callLoc)) {
-              const possibleStatement = doc.getStatementByLine(localDef.position.line);
+              const possibleStatement = doc.getStatementByLine(localDef.position.range.line);
               if (possibleStatement) {
                 errors.push({
                   type: `NoExternalTo`,
-                  offset: { position: possibleStatement.range.start, end: possibleStatement.range.end },
+                  offset: { start: possibleStatement.range.start, end: possibleStatement.range.end },
                 });
               }
             }
@@ -1150,11 +1051,11 @@ export default class Linter {
           .forEach(def => {
             if (def.references.length <= 1) {
               // Add an error to def
-              const possibleStatement = doc.getStatementByLine(def.position.line);
+              const possibleStatement = doc.getStatementByLine(def.position.range.line);
               if (possibleStatement) {
                 errors.push({
                   type: `NoUnreferenced`,
-                  offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                  offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                 });
               }
             }
@@ -1165,11 +1066,11 @@ export default class Linter {
           .forEach(def => {
             if (def.references.length <= 1) {
               // Add an error to def
-              const possibleStatement = doc.getStatementByLine(def.position.line);
+              const possibleStatement = doc.getStatementByLine(def.position.range.line);
               if (possibleStatement) {
                 errors.push({
                   type: `NoUnreferenced`,
-                  offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                  offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                 });
               }
             }
@@ -1181,11 +1082,11 @@ export default class Linter {
             if (!proc.keyword[`EXPORT`]) {
               if (proc.references.length <= 1) {
                 // Add an error to proc
-                const possibleStatement = doc.getStatementByLine(proc.position.line);
+                const possibleStatement = doc.getStatementByLine(proc.position.range.line);
                 if (possibleStatement) {
                   errors.push({
                     type: `NoUnreferenced`,
-                    offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                    offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                   });
                 }
               }
@@ -1193,11 +1094,11 @@ export default class Linter {
               if (!proc.keyword[`EXTPGM`] && !proc.keyword[`EXTPROC`]) {
                 proc.subItems.forEach(parm => {
                   if (parm.references.length <= 1) {
-                    const possibleStatement = doc.getStatementByLine(parm.position.line);
+                    const possibleStatement = doc.getStatementByLine(parm.position.range.line);
                     if (possibleStatement) {
                       errors.push({
                         type: `NoUnreferenced`,
-                        offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                        offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                       });
                     }
                   }
@@ -1217,22 +1118,22 @@ export default class Linter {
               struct.subItems.forEach(subf => {
                 if (subf.references.length <= 1) {
                   // Add an error to subf
-                  const possibleStatement = doc.getStatementByLine(subf.position.line);
+                  const possibleStatement = doc.getStatementByLine(subf.position.range.line);
                   if (possibleStatement) {
                     errors.push({
                       type: `NoUnreferenced`,
-                      offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                      offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                     });
                   }
                 }
               });
 
               if (subFieldIsUsed === false) {
-                const possibleStatement = doc.getStatementByLine(struct.position.line);
+                const possibleStatement = doc.getStatementByLine(struct.position.range.line);
                 if (possibleStatement) {
                   errors.push({
                     type: `NoUnreferenced`,
-                    offset: { position: possibleStatement.range.start, end: possibleStatement.range.end }
+                    offset: { start: possibleStatement.range.start, end: possibleStatement.range.end }
                   });
                 }
               }

@@ -1,7 +1,8 @@
 import { Hover, HoverParams, MarkupKind, Range } from 'vscode-languageserver';
-import { documents, getWordRangeAtPosition, parser } from '.';
+import { documents, getWordRangeAtPosition, parser, prettyKeywords } from '.';
 import Parser from "../../../../language/parser";
 import { URI } from 'vscode-uri';
+import { Keywords } from '../../../../language/parserTypes';
 
 export default async function hoverProvider(params: HoverParams): Promise<Hover|undefined> {
 	const currentPath = params.textDocument.uri;
@@ -18,8 +19,14 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 
 			if (procedure) {
 				let markdown = ``;
-				let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
-				if (retrunValue.length === 0) retrunValue = [`void`];
+				let returnValue = `void`
+
+				let returnKeywords: Keywords = {
+					...procedure.keyword,
+				};
+				delete returnKeywords[`EXTPROC`];
+
+				if (Object.keys(returnKeywords).length > 0) returnValue = prettyKeywords(returnKeywords);
 
 				const returnTag = procedure.tags.find(tag => tag.tag === `return`);
 				const deprecatedTag = procedure.tags.find(tag => tag.tag === `deprecated`);
@@ -33,10 +40,10 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 				markdown += `\`\`\`vb\n${procedure.name}(`;
 
 				if (procedure.subItems.length > 0) {
-					markdown += `\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `).trim()}`).join(`,\n  `)}\n`;
+					markdown += `\n  ${procedure.subItems.map(parm => `${parm.name}: ${prettyKeywords(parm.keyword)}`).join(`,\n  `)}\n`;
 				}
 
-				markdown += `): ${retrunValue.join(` `)}\n\`\`\` \n`;
+				markdown += `): ${returnValue}\n\`\`\` \n`;
 
 				// Description
 				if (procedure.description)
@@ -52,7 +59,7 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 				}
 
 				if (procedure.position && currentPath !== procedure.position.path) {
-					markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line+1}\``;
+					markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.range.line+1}\``;
 				}
 				
 				return {
@@ -63,7 +70,7 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 				};
 			} else {
 				// If they're inside of a procedure, let's get the stuff from there too
-				const currentProcedure = doc.procedures.find(proc => currentLine >= proc.range.start && currentLine <= proc.range.end);
+				const currentProcedure = doc.procedures.find(proc => proc.range.start && proc.range.end && currentLine >= proc.range.start && currentLine <= proc.range.end);
 				let theVariable;
 
 				if (currentProcedure && currentProcedure.scope) {
@@ -76,10 +83,12 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 
 				if (theVariable) {
 					// Variable definition found
-					let markdown = `\`${theVariable.name}\`: \`${theVariable.keywords.join(` `).trim()}\``;
+					const refs = theVariable.references.length;
+										
+					let markdown = `\`${theVariable.name} ${prettyKeywords(theVariable.keyword)}\` (${refs} reference${refs === 1 ? `` : `s`})`;
 
 					if (theVariable.position && currentPath !== theVariable.position.path) {
-						markdown += `\n\n*@file* \`${theVariable.position.path}:${theVariable.position.line+1}\``;
+						markdown += `\n\n*@file* \`${theVariable.position.path}:${theVariable.position.range.line+1}\``;
 					}
 
 					return {
@@ -94,7 +103,7 @@ export default async function hoverProvider(params: HoverParams): Promise<Hover|
 
 					const includeDirective = Parser.getIncludeFromDirective(lineContent);
 					
-					if (includeDirective) {
+					if (includeDirective && parser.includeFileFetch) {
 						const include = await parser.includeFileFetch(currentPath, includeDirective);
 						let displayName = includeDirective;
 
