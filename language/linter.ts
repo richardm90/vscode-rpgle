@@ -566,7 +566,7 @@ export default class Linter {
                       }
                     }
                     break;
-                    
+
                   case `END-DS`:
                   case `END-ENUM`:
                     inStruct.pop();
@@ -845,7 +845,7 @@ export default class Linter {
                           const renameRule = rules.RenameStuff.find(rule => part.value === rule.from);
                           if (renameRule) {
                             errors.push({
-                              offset: { position: part.range.start, end: part.range.end },
+                              offset: part.range,
                               type: `RenameStuff`,
                               newValue: renameRule.to
                             });
@@ -925,7 +925,7 @@ export default class Linter {
 
         // Next, check for indentation errors
 
-        // Check to see if we are ending a multi-line conditional 
+        // Check to see if we are ending a multi-line conditional
         // and now need to increase the expected indent level
 
         if (!skipIndentCheck) {
