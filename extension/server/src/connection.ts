@@ -24,35 +24,119 @@ connection.onDidChangeWatchedFiles((params: DidChangeWatchedFilesParams) => {
 	watchedFilesChangeEvent.forEach(editEvent => editEvent(params));
 })
 
+let validatedUriCache: {[key: string]: string | undefined} = {};
+let pendingValidationRequests: {[key: string]: Promise<string | undefined>} = {};
+
 export async function validateUri(stringUri: string, scheme = ``) {
-	// First, check local cache
+	const cacheKey = `${scheme}:${stringUri}`;
+
+	// First, check validation cache
+	if (cacheKey in validatedUriCache) {
+		return validatedUriCache[cacheKey];
+	}
+
+	// Second, check local cache
 	const possibleCachedFile = findFile(stringUri, scheme);
-	if (possibleCachedFile) return possibleCachedFile;
+	if (possibleCachedFile) {
+		validatedUriCache[cacheKey] = possibleCachedFile;
+		return possibleCachedFile;
+	}
 
-	console.log(`Validating file from server: ${stringUri}`);
+	// Check if there's already a pending validation for this URI
+	if (cacheKey in pendingValidationRequests) {
+		return pendingValidationRequests[cacheKey];
+	}
 
-	// Then reach out to the extension to find it
-	const uri: string|undefined = await connection.sendRequest("getUri", stringUri);
-	if (uri) return uri; 
+	// Create a new validation request
+	const validationPromise = (async () => {
+		console.log(`Validating file from server: ${stringUri}`);
 
-	return;
+		try {
+			// Reach out to the extension to find it
+			const uri: string | undefined = await connection.sendRequest("getUri", stringUri);
+			validatedUriCache[cacheKey] = uri;
+			return uri;
+		} finally {
+			// Clean up the pending request
+			delete pendingValidationRequests[cacheKey];
+		}
+	})();
+
+	// Store the promise so concurrent requests can reuse it
+	pendingValidationRequests[cacheKey] = validationPromise;
+
+	return validationPromise;
 }
+
+export function clearValidatedUriCache(uri?: string) {
+	if (uri) {
+		// Clear all cache entries that match this URI
+		Object.keys(validatedUriCache).forEach(key => {
+			if (key.includes(uri) || validatedUriCache[key] === uri) {
+				delete validatedUriCache[key];
+			}
+		});
+		// Also clear pending requests
+		Object.keys(pendingValidationRequests).forEach(key => {
+			if (key.includes(uri)) {
+				delete pendingValidationRequests[key];
+			}
+		});
+	} else {
+		validatedUriCache = {};
+		pendingValidationRequests = {};
+	}
+}
+
+let fileContentCache: {[uri: string]: string} = {};
+let pendingFileRequests: {[uri: string]: Promise<string | undefined>} = {};
 
 export async function getFileRequest(uri: string) {
 	// First, check if it's local
 	const localCacheDoc = documents.get(uri);
 	if (localCacheDoc) return localCacheDoc.getText();
 
-	console.log(`Fetching file from server: ${uri}`);
+	// Check the cache
+	if (fileContentCache[uri]) return fileContentCache[uri];
 
-	// If not, then grab it from remote
-	const body: string|undefined = await connection.sendRequest("getFile", uri);
-	if (body) {
-		// TODO.. cache it?
-		return body; 
+	// Check if there's already a pending request for this file
+	if (uri in pendingFileRequests) {
+		return pendingFileRequests[uri];
 	}
 
-	return;
+	// Create a new request
+	const requestPromise = (async () => {
+		console.log(`Fetching file from server: ${uri}`);
+
+		try {
+			// Grab it from remote
+			const body: string | undefined = await connection.sendRequest("getFile", uri);
+			if (body) {
+				// Cache the fetched content
+				fileContentCache[uri] = body;
+				return body;
+			}
+			return undefined;
+		} finally {
+			// Clean up the pending request
+			delete pendingFileRequests[uri];
+		}
+	})();
+
+	// Store the promise so concurrent requests can reuse it
+	pendingFileRequests[uri] = requestPromise;
+
+	return requestPromise;
+}
+
+export function clearFileContentCache(uri?: string) {
+	if (uri) {
+		delete fileContentCache[uri];
+		delete pendingFileRequests[uri];
+	} else {
+		fileContentCache = {};
+		pendingFileRequests = {};
+	}
 }
 
 export let resolvedMembers: {[baseUri: string]: {[fileKey: string]: IBMiMember}} = {};

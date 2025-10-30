@@ -9,7 +9,7 @@ import Cache from '../../../../../language/models/cache';
 import documentFormattingProvider from './documentFormatting';
 
 import * as Project from "../project";
-import { connection, getFileRequest, getWorkingDirectory, resolvedMembers, resolvedStreamfiles, validateUri, watchedFilesChangeEvent } from '../../connection';
+import { clearFileContentCache, clearValidatedUriCache, connection, getFileRequest, getWorkingDirectory, resolvedMembers, resolvedStreamfiles, validateUri, watchedFilesChangeEvent } from '../../connection';
 import { parseMemberUri } from '../../data';
 
 export let jsonCache: { [uri: string]: string } = {};
@@ -50,7 +50,6 @@ export function initialise(connection: _Connection) {
 						document.getText(),
 						{
 							withIncludes: true,
-							ignoreCache: true,
 							collectReferences: true
 						}
 					).then(cache => {
@@ -81,6 +80,8 @@ export function initialise(connection: _Connection) {
 		const uriString = e.document.uri;
 		resolvedMembers[uriString] = {};
 		resolvedStreamfiles[uriString] = {};
+		clearFileContentCache(uriString);
+		clearValidatedUriCache(uriString);
 	})
 }
 

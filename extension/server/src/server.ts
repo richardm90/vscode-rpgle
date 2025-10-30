@@ -136,8 +136,6 @@ parser.setTableFetch(async (table: string, aliases = false): Promise<Declaration
 	return dspffdToRecordFormats(data, aliases);
 });
 
-let fetchingInProgress: { [fetchKey: string]: boolean } = {};
-
 parser.setIncludeFileFetch(async (stringUri: string, includeString: string) => {
 	const currentUri = URI.parse(stringUri);
 	const uriPath = currentUri.path;
@@ -145,158 +143,149 @@ parser.setIncludeFileFetch(async (stringUri: string, includeString: string) => {
 	let cleanString: string | undefined;
 	let validUri: string | undefined;
 
-	if (!fetchingInProgress[includeString]) {
-		fetchingInProgress[includeString] = true;
+	// Right now we are resolving based on the base file schema.
+	// This is likely bad since you can include across file systems.
 
-		// Right now we are resolving based on the base file schema.
-		// This is likely bad since you can include across file systems.
+	const hasQuotes = (includeString.startsWith(`'`) && includeString.endsWith(`'`)) || (includeString.startsWith(`"`) && includeString.endsWith(`"`))
+	const isUnixPath = hasQuotes || (includeString.includes(`/`) && !includeString.includes(`,`));
 
-		const hasQuotes = (includeString.startsWith(`'`) && includeString.endsWith(`'`)) || (includeString.startsWith(`"`) && includeString.endsWith(`"`))
-		const isUnixPath = hasQuotes || (includeString.includes(`/`) && !includeString.includes(`,`));
+	cleanString = includeString;
 
-		cleanString = includeString;
+	if (hasQuotes) {
+		cleanString = cleanString.substring(1, cleanString.length - 1);
+	}
 
-		if (hasQuotes) {
-			cleanString = cleanString.substring(1, cleanString.length - 1);
-		}
+	if (isUnixPath) {
+		if (![`streamfile`, `member`].includes(currentUri.scheme)) {
+			// Local file system search (scheme is usually file)
+			const workspaceFolders = await connection.workspace.getWorkspaceFolders();
+			let workspaceFolder: WorkspaceFolder | undefined;
+			if (workspaceFolders) {
+				workspaceFolder = workspaceFolders.find(folderUri => uriPath.startsWith(URI.parse(folderUri.uri).path))
+			}
 
-		if (isUnixPath) {
-			if (![`streamfile`, `member`].includes(currentUri.scheme)) {
-				// Local file system search (scheme is usually file)
-				const workspaceFolders = await connection.workspace.getWorkspaceFolders();
-				let workspaceFolder: WorkspaceFolder | undefined;
-				if (workspaceFolders) {
-					workspaceFolder = workspaceFolders.find(folderUri => uriPath.startsWith(URI.parse(folderUri.uri).path))
-				}
-
-				if (Project.isEnabled) {
-					// Project mode is enable. Let's do a search for the path.
-					validUri = await validateUri(cleanString, currentUri.scheme);
-
-				} else {
-					// Because project mode is disabled, likely due to the large workspace, we don't search
-					if (workspaceFolder) {
-						cleanString = path.posix.join(URI.parse(workspaceFolder.uri).path, cleanString)
-					}
-
-					validUri = existsSync(cleanString) ?
-						URI.from({
-							scheme: currentUri.scheme,
-							path: cleanString
-						}).toString()
-						: undefined;
-				}
-
-				if (!validUri) {
-					// Ok, no local file was found. Let's see if we can do a server lookup?
-					const foundStreamfile = await streamfileResolve(stringUri, [cleanString]);
-
-					if (foundStreamfile) {
-						validUri = URI.from({
-							scheme: `streamfile`,
-							path: foundStreamfile
-						}).toString();
-					}
-				}
+			if (Project.isEnabled) {
+				// Project mode is enable. Let's do a search for the path.
+				validUri = await validateUri(cleanString, currentUri.scheme);
 
 			} else {
-				// Resolving IFS path from member or streamfile
+				// Because project mode is disabled, likely due to the large workspace, we don't search
+				if (workspaceFolder) {
+					cleanString = path.posix.join(URI.parse(workspaceFolder.uri).path, cleanString)
+				}
 
-				// IFS fetch
-				
-				if (cleanString.startsWith(`/`)) {
-					// Path from root
+				validUri = existsSync(cleanString) ?
+					URI.from({
+						scheme: currentUri.scheme,
+						path: cleanString
+					}).toString()
+					: undefined;
+			}
+
+			if (!validUri) {
+				// Ok, no local file was found. Let's see if we can do a server lookup?
+				const foundStreamfile = await streamfileResolve(stringUri, [cleanString]);
+
+				if (foundStreamfile) {
 					validUri = URI.from({
 						scheme: `streamfile`,
-						path: cleanString
+						path: foundStreamfile
 					}).toString();
-
-				} else {
-					// TODO: Instead of searching for `.*`, search for:
-					//   - `${cleanString}`
-					//   - `${cleanString}.rpgleinc`
-					//   - `${cleanString}.rpgle`
-					const possibleFiles = [cleanString, `${cleanString}.rpgleinc`, `${cleanString}.rpgle`];
-					
-					// Path from home directory?
-					const foundStreamfile = await streamfileResolve(stringUri, possibleFiles);
-
-					if (foundStreamfile) {
-						validUri = URI.from({
-							scheme: `streamfile`,
-							path: foundStreamfile
-						}).toString();
-					}
 				}
 			}
 
 		} else {
-			// Member fetch
-			// Split by /,
-			const parts = parseMemberUri(includeString);
+			// Resolving IFS path from member or streamfile
 
-			// If there is no file provided, assume QRPGLESRC
-			let baseFile = parts.file || `QRPGLESRC`;
-			let baseMember = parts.name;
+			// IFS fetch
 
-			if (parts.library && parts.library.startsWith(`*`)) {
-				parts.library = undefined;
-			}
-
-			if (parts.library) {
-				cleanString = [
-					``,
-					...(parts.asp ? [parts.asp] : []),
-					parts.library,
-					baseFile,
-					baseMember + `.rpgleinc`
-				].join(`/`);
-
-				cleanString = URI.from({
-					scheme: `member`,
+			if (cleanString.startsWith(`/`)) {
+				// Path from root
+				validUri = URI.from({
+					scheme: `streamfile`,
 					path: cleanString
 				}).toString();
 
-				validUri = await validateUri(cleanString, currentUri.scheme);
-
 			} else {
-				// No base library provided, let's do a resolve
+				// TODO: Instead of searching for `.*`, search for:
+				//   - `${cleanString}`
+				//   - `${cleanString}.rpgleinc`
+				//   - `${cleanString}.rpgle`
+				const possibleFiles = [cleanString, `${cleanString}.rpgleinc`, `${cleanString}.rpgle`];
 
-				const foundMember = await memberResolve(stringUri, baseMember, baseFile);
+				// Path from home directory?
+				const foundStreamfile = await streamfileResolve(stringUri, possibleFiles);
 
-				if (foundMember) {
-					cleanString = [
-						``,
-						...(parts.asp ? [parts.asp] : []),
-						foundMember.library,
-						foundMember.file,
-						foundMember.name + `.rpgleinc`
-					].join(`/`);
-
+				if (foundStreamfile) {
 					validUri = URI.from({
-						scheme: `member`,
-						path: cleanString
+						scheme: `streamfile`,
+						path: foundStreamfile
 					}).toString();
 				}
 			}
 		}
 
-		fetchingInProgress[includeString] = false;
+	} else {
+		// Member fetch
+		// Split by /,
+		const parts = parseMemberUri(includeString);
 
-		if (validUri) {
-			const validSource = await getFileRequest(validUri);
-			if (validSource) {
-				return {
-					found: true,
-					uri: validUri,
-					content: validSource
-				};
-			}
+		// If there is no file provided, assume QRPGLESRC
+		let baseFile = parts.file || `QRPGLESRC`;
+		let baseMember = parts.name;
+
+		if (parts.library && parts.library.startsWith(`*`)) {
+			parts.library = undefined;
 		}
 
+		if (parts.library) {
+			cleanString = [
+				``,
+				...(parts.asp ? [parts.asp] : []),
+				parts.library,
+				baseFile,
+				baseMember + `.rpgleinc`
+			].join(`/`);
+
+			cleanString = URI.from({
+				scheme: `member`,
+				path: cleanString
+			}).toString();
+
+			validUri = await validateUri(cleanString, currentUri.scheme);
+
+		} else {
+			// No base library provided, let's do a resolve
+
+			const foundMember = await memberResolve(stringUri, baseMember, baseFile);
+
+			if (foundMember) {
+				cleanString = [
+					``,
+					...(parts.asp ? [parts.asp] : []),
+					foundMember.library,
+					foundMember.file,
+					foundMember.name + `.rpgleinc`
+				].join(`/`);
+
+				validUri = URI.from({
+					scheme: `member`,
+					path: cleanString
+				}).toString();
+			}
+		}
 	}
-	
-	fetchingInProgress[includeString] = false;
+
+	if (validUri) {
+		const validSource = await getFileRequest(validUri);
+		if (validSource) {
+			return {
+				found: true,
+				uri: validUri,
+				content: validSource
+			};
+		}
+	}
 
 	return {
 		found: false,

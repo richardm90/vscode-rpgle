@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 
-import { connection, getWorkspaceFolder, PossibleInclude, watchedFilesChangeEvent } from '../../connection';
+import { clearFileContentCache, clearValidatedUriCache, connection, getWorkspaceFolder, PossibleInclude, watchedFilesChangeEvent } from '../../connection';
 import { documents, parser } from '..';
 import Linter from '../../../../../language/linter';
 import { DidChangeWatchedFilesParams, FileChangeType } from 'vscode-languageserver';
@@ -47,6 +47,8 @@ export async function initialise() {
 
 				default:
 					parser.clearParsedCache(fileEvent.uri);
+					clearFileContentCache(fileEvent.uri);
+					clearValidatedUriCache(fileEvent.uri);
 					break;
 			}
 		})
