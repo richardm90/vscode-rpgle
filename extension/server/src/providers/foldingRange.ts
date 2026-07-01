@@ -1,7 +1,8 @@
 import { FoldingRange, FoldingRangeParams, FoldingRangeKind } from 'vscode-languageserver';
 import { documents } from '.';
 import { isInSqlBlock, isInCommentOrString } from '../../../../language/utils/sqlDetection';
-import { RPGLE_BLOCK_PAIRS, BlockPair } from '../../../../language/utils/blockParser';
+import { RPGLE_BLOCK_PAIRS, BlockPair, buildBlockKeywordRegex } from '../../../../language/utils/blockParser';
+import { isDclDsLikeDsOrLikeRec } from '../../../../language/utils/dclDs';
 import { ParserFactory } from '../../../../language/parserFactory';
 
 // Provides folding ranges for RPGLE code blocks
@@ -21,12 +22,9 @@ export default function foldingRangeProvider(params: FoldingRangeParams): Foldin
     allKeywords.push(...pair.open, ...pair.close);
   });
 
-  // Sort keywords by length (longest first) to match longer keywords before shorter ones
-  // This ensures 'end-proc' is matched before 'end'
-  const sortedKeywords = allKeywords.sort((a, b) => b.length - a.length);
-
-  // Escape hyphens in keywords for regex
-  const regex = new RegExp(`\\b(${sortedKeywords.map(k => k.replace(/-/g, '\\-')).join('|')})\\b`, 'gi');
+  // Match keywords on RPGLE word boundaries (handles special-char names like £end / W#End,
+  // which plain \b would falsely match). Sorting longest-first happens inside the helper.
+  const regex = buildBlockKeywordRegex(allKeywords);
 
   // Find all keyword matches in the document
   interface Match {
@@ -77,26 +75,11 @@ export default function foldingRangeProvider(params: FoldingRangeParams): Foldin
     if (!pair) continue;
 
     if (pair.open.includes(current.word)) {
-      // Special handling for dcl-ds: skip if it uses likeds() or likerec()
-      // These create single-line declarations that don't require end-ds
-      if (current.word === 'dcl-ds') {
-        const lineStart = text.lastIndexOf('\n', current.offset) + 1;
-        const lineEnd = text.indexOf('\n', current.offset);
-        let lineContent = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd);
-
-        // Strip comments before checking
-        const commentIndex = lineContent.indexOf('//');
-        if (commentIndex !== -1) {
-          lineContent = lineContent.substring(0, commentIndex);
-        }
-
-        lineContent = lineContent.toLowerCase();
-
-        // Skip if the line contains likeds() or likerec() - not a block opener
-        // Use regex to handle optional whitespace between keyword and opening paren
-        if (/likeds\s*\(/.test(lineContent) || /likerec\s*\(/.test(lineContent)) {
-          continue;
-        }
+      // Special handling for dcl-ds: skip if it uses likeds() or likerec().
+      // These create self-contained declarations that don't require end-ds, even
+      // when the keyword appears on a continuation line.
+      if (current.word === 'dcl-ds' && isDclDsLikeDsOrLikeRec(text, current.offset)) {
+        continue;
       }
 
       // Opening keyword - push to stack

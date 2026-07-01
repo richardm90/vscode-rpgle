@@ -6,6 +6,10 @@ describe('Folding Range - dcl-ds with likeds/likerec', () => {
    * Helper to simulate the folding logic for dcl-ds
    * This matches the logic added to foldingRange.ts
    * Returns true if dcl-ds should be treated as a block opener
+   *
+   * Only likeds()/likerec() are self-contained (they can never have subfields, so they
+   * never take end-ds). Every other dcl-ds - including extname() - is a block opener that
+   * requires end-ds (either on the same line or closing a multi-line block).
    */
   function shouldDclDsCreateBlock(line: string): boolean {
     // Strip comments before checking
@@ -74,7 +78,14 @@ describe('Folding Range - dcl-ds with likeds/likerec', () => {
     });
 
     it('should be treated as block opener with extname', () => {
+      // extname requires end-ds (unlike likeds/likerec), so it opens a block.
       const line = '  dcl-ds qcustcdt extname(\'QIWS/QCUSTCDT\') qualified;';
+      expect(shouldDclDsCreateBlock(line)).toBe(true);
+    });
+
+    it('should be treated as block opener with extname even with same-line end-ds', () => {
+      // The dcl-ds still pushes onto the stack; its same-line end-ds pops it.
+      const line = '  dcl-ds qcustcdt extname(\'QIWS/QCUSTCDT\') qualified inz end-ds;';
       expect(shouldDclDsCreateBlock(line)).toBe(true);
     });
 

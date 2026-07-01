@@ -34,8 +34,9 @@ dcl-proc proc1;
     end-ds;
     dcl-ds myds3 likeds(outputData_t);
     dcl-ds myds4;
-     field5 char(10);
+      field5 char(10);
     end-ds;
+    dcl-subf chain ind;
   end-ds;
 
   return outputData;
@@ -118,8 +119,7 @@ dcl-proc proc7_likerec;
 end-proc;
 
 dcl-proc proc8_comment_edge_case;
-  dcl-pi *n;
-  end-pi;
+  dcl-pi *n end-pi;
 
   // Edge case: likeds in comment should create block
   dcl-ds shouldBeBlock;  // likeds(fake) in comment
@@ -129,12 +129,93 @@ dcl-proc proc8_comment_edge_case;
 end-proc;
 
 dcl-proc proc9_comment_close;
-  dcl-pi *n;
-  end-pi;
+  dcl-pi *n int(10) end-pi;
 
   // Edge case: end-ds in comment should create block
   dcl-ds shouldBeBlock;  // end-ds in comment
     field1 int(10);
+  end-ds;
+
+  return field1;
+end-proc;
+
+dcl-proc proc10_extname;
+
+  // extname requires end-ds (unlike likeds/likerec). Both valid forms below should
+  // highlight/fold dcl-ds <-> end-ds as a pair.
+
+  // Block form: extname with extra subfields and a real end-ds
+  dcl-ds data13 extname('QIWS/QCUSTCDT') qualified;
+    extraField char(10);
+  end-ds;
+
+  // One-line balanced: extname with end-ds on the same line
+  dcl-ds data14 extname('QIWS/QCUSTCDT') qualified inz end-ds;
+
+end-proc;
+
+dcl-proc proc11_multiline_likeds;
+  dcl-pi *n;
+  end-pi;
+
+  dcl-f QSYSPRT rename(QSYSPRT:QSYSPRTR);
+
+  // likeds/likerec on a continuation line - self-contained, no end-ds
+  dcl-ds data15
+    likeds(outputData_t);
+
+  dcl-ds data16
+    likerec(QSYSPRTR);
+
+  // keyword plus extra clauses spanning several lines
+  dcl-ds data17
+    likeds(outputData_t)
+    inz(*likeds);
+
+end-proc;  // must still match dcl-proc, not the dcl-ds above
+
+dcl-proc proc12_multiline_nested;
+  dcl-pi *n;
+  end-pi;
+
+  // contrast: a real multi-line block DS still needs end-ds, even split across lines
+  dcl-ds outer
+    qualified;
+    field1 int(10);
+    dcl-ds inner likeds(outputData_t);  // single, no end-ds
+  end-ds;                               // closes outer
+
+end-proc;
+
+dcl-proc proc13_multiline_comments;
+  dcl-pi *n;
+  end-pi;
+
+  // comment on the dcl-ds line, likeds on the continuation - still no end-ds
+  dcl-ds data18  // leading comment
+    likeds(outputData_t);
+
+  // a real block DS whose continuation line only mentions likeds in a comment
+  dcl-ds data19
+    // likeds(fake) - just a comment, this is still a block
+    qualified;
+    field6 char(10);
+  end-ds;
+
+end-proc;
+
+dcl-proc proc14_fields_with_end;
+
+  dcl-s bend ind inz(*off);
+  dcl-s end2 ind inz(*off);
+  dcl-s £end ind inz(*off);
+  dcl-s W#End ind inz(*off);
+
+  dcl-ds data20 qualified;
+    bend ind;
+    end2 ind;
+    dcl-subf £end ind;
+    dcl-subf W#End ind;
   end-ds;
 
 end-proc;

@@ -1,7 +1,19 @@
+import { RPGLE_WORD_CHAR_PATTERN } from './wordPattern';
+
 export interface BlockPair {
   open: string[];
   close: string[];
   middle?: string[];
+}
+
+// Builds a case-insensitive regex matching any of the given block keywords as whole
+// RPGLE words. Boundaries use RPGLE_WORD_CHAR_PATTERN (not JS `\b`, which is `\w`-only) so a
+// keyword embedded in an identifier with special characters — e.g. `end` inside `£end`
+// or `W#End` — is NOT matched. Keywords are sorted longest-first so hyphenated keywords
+// like `end-proc` match before bare `end`.
+export function buildBlockKeywordRegex(keywords: string[]): RegExp {
+  const sorted = [...keywords].sort((a, b) => b.length - a.length);
+  return new RegExp(`(?<!${RPGLE_WORD_CHAR_PATTERN})(${sorted.join('|')})(?!${RPGLE_WORD_CHAR_PATTERN})`, 'gi');
 }
 
 export const RPGLE_BLOCK_PAIRS: BlockPair[] = [
@@ -111,7 +123,7 @@ export function findAllBlockMatches(
     allKeywords.push(...pair.open, ...pair.close);
   });
 
-  const regex = new RegExp(`\\b(${allKeywords.join('|')})\\b`, 'gi');
+  const regex = buildBlockKeywordRegex(allKeywords);
   const matches: BlockMatch[] = [];
 
   let match;

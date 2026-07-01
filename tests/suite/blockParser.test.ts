@@ -125,7 +125,7 @@ endsl;`;
 endfor;`;
       const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
       expect(matches.length).toBe(2);
-      expect(matches[0].word).toBe('for');
+      expect(matches[0].word).toBe('for-each');
       expect(matches[1].word).toBe('endfor');
     });
 
@@ -139,8 +139,8 @@ end-proc;`;
       expect(matches.length).toBe(4);
       expect(matches[0].word).toBe('dcl-proc');
       expect(matches[1].word).toBe('dcl-pi');
-      expect(matches[2].word).toBe('end');
-      expect(matches[3].word).toBe('end');
+      expect(matches[2].word).toBe('end-pi');
+      expect(matches[3].word).toBe('end-proc');
     });
 
     it('should handle END keyword', () => {
@@ -165,6 +165,76 @@ endif;`;
       expect(matches[0].word).to.equal('ifeq');
       expect(matches[2].word).to.equal('ifne');
       expect(matches[4].word).to.equal('ifgt');
+    });
+
+    // Regression: identifiers that embed a block keyword next to a special character
+    // (£ # $ @) must NOT be matched as block keywords. JS \b treats £/# as word
+    // boundaries, which previously caused 'end' inside £end / W#End to match falsely.
+    it('should NOT match END inside identifiers with special characters', () => {
+      const code = `dcl-proc p;
+  dcl-s bend ind inz(*off);
+  dcl-s end2 ind inz(*off);
+  dcl-s £end ind inz(*off);
+  dcl-s W#End ind inz(*off);
+  dcl-ds data qualified;
+    dcl-subf £end ind;
+    dcl-subf W#End ind;
+  end-ds;
+end-proc;`;
+      const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
+      // Only the real block keywords: dcl-proc, dcl-ds, end-ds, end-proc.
+      expect(matches.map(m => m.word)).toEqual(['dcl-proc', 'dcl-ds', 'end-ds', 'end-proc']);
+    });
+
+    it('should still match standalone END keywords', () => {
+      const code = `if x > 0;
+  £end = *on;
+end;`;
+      const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
+      // £end (assignment) is skipped; the bare 'end' closer is matched.
+      expect(matches.map(m => m.word)).toEqual(['if', 'end']);
+    });
+
+    // The boundary is defined by exclusion, so any non-37 CCSID variant glyph (e.g. ¥)
+    // adjacent to a keyword is also treated as part of the identifier, not a boundary.
+    it('should NOT match keywords adjacent to other variant glyphs (CCSID-robust)', () => {
+      const code = `dcl-s ¥end ind inz(*off);`;
+      const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
+      expect(matches).to.have.lengthOf(0);
+    });
+
+    // Regression (point 2): keywords must be sorted longest-first before the alternation
+    // is built. JS regex alternation is first-match-wins, not longest-match, so a bare
+    // keyword listed before its hyphenated sibling would match the prefix and truncate the
+    // hyphenated keyword. The `length` assertions are the sharp part: under the old
+    // unsorted matcher these matched the bare prefix (length 3), not the whole keyword.
+    describe('longest-first keyword matching', () => {
+      it('should match for-each as one keyword, not the bare for prefix', () => {
+        const code = `for-each item in list;
+  total += item.value;
+endfor;`;
+        const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
+        expect(matches.map(m => m.word)).toEqual(['for-each', 'endfor']);
+        // bug would yield word 'for', length 3, leaving '-each' dangling
+        expect(matches[0].length).toBe('for-each'.length);
+      });
+
+      it('should match hyphenated end- closers, not the bare end prefix', () => {
+        const code = `dcl-proc p;
+  dcl-pi *n;
+  end-pi;
+  dcl-ds d qualified;
+    field char(10);
+  end-ds;
+end-proc;`;
+        const matches = findAllBlockMatches(code, isInCommentOrString, isInSqlBlock);
+        expect(matches.map(m => m.word)).toEqual([
+          'dcl-proc', 'dcl-pi', 'end-pi', 'dcl-ds', 'end-ds', 'end-proc',
+        ]);
+        // bug would tokenise each end-xx closer as bare 'end' (length 3)
+        const endDs = matches.find(m => m.word === 'end-ds');
+        expect(endDs?.length).toBe('end-ds'.length);
+      });
     });
   });
 });

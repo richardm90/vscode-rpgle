@@ -214,6 +214,40 @@ end-proc;
       expect(code).toContain('dcl-ds temp likerec(MyRecord);  // Single-line');
     });
 
+    it('should treat dcl-ds with extname() as a block opener requiring end-ds', () => {
+      // Unlike likeds/likerec, an extname() data structure ALWAYS requires end-ds
+      // (the RPG compiler enforces this). It is a normal block opener: the dcl-ds
+      // pairs with its end-ds, whether multi-line or on the same line.
+      const code = `
+**free
+
+dcl-proc processData;
+  dcl-ds customer extname('QIWS/QCUSTCDT') qualified;
+    extraField char(10);
+  end-ds;  // This end-ds closes the extname dcl-ds above
+
+end-proc;
+      `.trim();
+
+      expect(code).toContain(`dcl-ds customer extname('QIWS/QCUSTCDT') qualified;`);
+      expect(code).toContain('end-ds;  // This end-ds closes the extname dcl-ds above');
+    });
+
+    it('should treat a one-line extname() with same-line end-ds as a balanced block', () => {
+      // dcl-ds and end-ds on one line: the dcl-ds opens and the same-line end-ds closes it.
+      const code = `
+**free
+
+dcl-proc processData;
+  dcl-ds qcustcdt extname('QIWS/QCUSTCDT') qualified inz end-ds;
+
+end-proc;  // Should correctly close dcl-proc, not the dcl-ds above
+      `.trim();
+
+      expect(code).toContain(`dcl-ds qcustcdt extname('QIWS/QCUSTCDT') qualified inz end-ds;`);
+      expect(code).toContain('end-proc;  // Should correctly close dcl-proc');
+    });
+
     it('should detect mismatched end-proc when dcl-ds likeds is incorrectly treated as block', () => {
       // This is the original bug scenario
       const code = `

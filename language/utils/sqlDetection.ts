@@ -136,6 +136,18 @@ function scanForSqlTerminator(
 }
 
 /**
+ * Returns true when the source is fully free-format, i.e. its first line is `**FREE`.
+ * Fixed-format column rules (such as a `*` in column 6/7 marking a comment) only apply
+ * when this is false. `**FREE` is only honoured on the very first line, mirroring the parser.
+ * @param text The full text content
+ */
+export function isFullyFreeFormat(text: string): boolean {
+  let firstLineEnd = text.search(/[\r\n]/);
+  if (firstLineEnd === -1) firstLineEnd = text.length;
+  return text.substring(0, firstLineEnd).toLowerCase().startsWith('**free');
+}
+
+/**
  * Check if a position is inside a comment or string
  * @param text The full text content
  * @param offset The position to check
@@ -146,6 +158,20 @@ export function isInCommentOrString(text: string, offset: number): boolean {
   let lineStart = offset;
   while (lineStart > 0 && text[lineStart - 1] !== '\n' && text[lineStart - 1] !== '\r') {
     lineStart--;
+  }
+
+  // Fixed-format full-line comment. Mirrors parser.ts: when the source is not **FREE,
+  // a line longer than 6 chars whose column 6 or column 7 holds a `*` is a comment line.
+  // Columns 6-7 are reserved in fixed format, so this can't clash with free-form code
+  // like `*ON`; in a **FREE source these columns are ordinary, so the rule is skipped.
+  if (!isFullyFreeFormat(text)) {
+    let lineEnd = text.indexOf('\n', lineStart);
+    if (lineEnd === -1) lineEnd = text.length;
+    let line = text.substring(lineStart, lineEnd);
+    if (line.endsWith('\r')) line = line.slice(0, -1);
+    if (line.length > 6 && (line[5] === '*' || line[6] === '*')) {
+      return true;
+    }
   }
 
   // Extract line content before the offset

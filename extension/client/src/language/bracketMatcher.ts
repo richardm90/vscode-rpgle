@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { isInSqlBlock, isInCommentOrString } from '../../../../language/utils/sqlDetection';
 import { RPGLE_BLOCK_PAIRS, BlockPair, BlockMatch } from '../../../../language/utils/blockParser';
+import { isDclDsLikeDsOrLikeRec } from '../../../../language/utils/dclDs';
 import * as rpgle from '../rpgtools-comment-helpers';
 
 type BracketPair = BlockPair;
@@ -586,17 +587,11 @@ function stripComments(line: string): string {
   return line;
 }
 
-// Helper function to check if dcl-ds line has likeds() or likerec()
+// Helper function to check if a dcl-ds declaration uses likeds() or likerec().
+// Delegates to the shared predicate, which scans the whole statement so the
+// keyword is detected even when written on a continuation line.
 function isDclDsWithLikedsOrLikerec(text: string, offset: number): boolean {
-  const lineStart = text.lastIndexOf('\n', offset) + 1;
-  const lineEnd = text.indexOf('\n', offset);
-  const lineContent = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd);
-
-  // Strip comments before checking
-  const lineWithoutComments = stripComments(lineContent).toLowerCase();
-
-  // Check if the line contains likeds() or likerec()
-  return /likeds\s*\(/.test(lineWithoutComments) || /likerec\s*\(/.test(lineWithoutComments);
+  return isDclDsLikeDsOrLikeRec(text, offset);
 }
 
 // Helper function specifically for finding the opening block for an END keyword
